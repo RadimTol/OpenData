@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Počet souborů podle dne a adresáře</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      background: #f7f7f7;
+      color: #222;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .status {
+      margin-bottom: 16px;
+      color: #555;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th, td {
+      border-bottom: 1px solid #ddd;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef3f8;
+    }
+
+    .small {
+      font-size: 0.92em;
+      color: #666;
+    }
+
+    #tableWrap {
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Počet souborů podle dne a adresáře</h1>
+  <div class="status" id="status">Načítám data…</div>
+
+  <div class="card">
+    <canvas id="chart"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="small">Tabulka zobrazuje počty souborů po dnech pro jednotlivé adresáře.</div>
+    <div id="tableWrap">
+      <table id="resultTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function formatDateCZ(isoDate) {
+      const d = new Date(isoDate);
+      return d.toLocaleDateString("cs-CZ");
+    }
+
+    async function loadData() {
+      const status = document.getElementById("status");
+
+      try {
+        const response = await fetch("data.json");
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+          status.textContent = "Soubor data.json je prázdný nebo má jiný formát.";
+          return;
+        }
+
+        const dates = [...new Set(data.map(d => d.date))].sort();
+        const sources = [...new Set(data.map(d => d.source))];
+
+        const labels = dates.map(formatDateCZ);
+
+        const colors = [
+          "steelblue",
+          "orange",
+          "green",
+          "red",
+          "purple",
+          "teal",
+          "brown",
+          "magenta"
+        ];
+
+        const datasets = sources.map((source, i) => ({
+          label: source,
+          backgroundColor: colors[i % colors.length],
+          data: dates.map(date => {
+            const row = data.find(d => d.date === date && d.source === source);
+            return row ? row.n_files : 0;
+          })
+        }));
+
+        new Chart(document.getElementById("chart"), {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: datasets
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: "top"
+              },
+              tooltip: {
+                callbacks: {
+                  title: function(items) {
+                    const idx = items[0].dataIndex;
+                    return labels[idx];
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                ticks: {
+                  maxRotation: 45,
+                  minRotation: 45
+                }
+              },
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  precision: 0
+                },
+                title: {
+                  display: true,
+                  text: "Počet souborů"
+                }
+              }
+            }
+          }
+        });
+
+        // tabulka: hlavička
+        const tableHead = document.getElementById("tableHead");
+        const tableBody = document.getElementById("tableBody");
+
+        let headHtml = "<tr><th>Datum</th>";
+        sources.forEach(source => {
+          headHtml += `<th>${source}</th>`;
+        });
+        headHtml += "</tr>";
+        tableHead.innerHTML = headHtml;
+
+        // tabulka: řádky
+        tableBody.innerHTML = "";
+        dates.forEach(date => {
+          let rowHtml = `<tr><td>${formatDateCZ(date)}</td>`;
+          sources.forEach(source => {
+            const row = data.find(d => d.date === date && d.source === source);
+            rowHtml += `<td>${row ? row.n_files : 0}</td>`;
+          });
+          rowHtml += "</tr>";
+          tableBody.innerHTML += rowHtml;
+        });
+
+        status.textContent = `Načteno ${data.length} záznamů, ${dates.length} dnů, ${sources.length} adresářů.`;
+      } catch (err) {
+        status.textContent = "Chyba při načítání data.json: " + err.message;
+        console.error(err);
+      }
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
