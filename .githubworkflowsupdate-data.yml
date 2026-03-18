@@ -29,17 +29,6 @@ jobs:
       - name: Write last run timestamp
         run: |
           date -u +"%Y-%m-%d %H:%M:%S UTC" > last_run.txt
-          echo "Obsah last_run.txt:"
-          cat last_run.txt
-
-      - name: Debug git status
-        run: |
-          echo "Aktuální adresář:"
-          pwd
-          echo "Soubory:"
-          ls -la
-          echo "Git status před add:"
-          git status --short
 
       - name: Commit and push
         run: |
@@ -48,8 +37,6 @@ jobs:
 
           git add -A
 
-          echo "Git status po add:"
-          git status --short
-
           git commit -m "Automatická aktualizace dat" || echo "Nothing to commit"
+
           git push
