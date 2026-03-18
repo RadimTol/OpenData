@@ -60,6 +60,10 @@
   <h1>Počet souborů podle dne a adresáře</h1>
   <div class="status" id="status">Načítám data…</div>
 
+<h1>Počet souborů podle dne a adresáře</h1>
+<div class="status" id="status">Načítám data…</div>
+<div class="small" id="lastUpdate">Poslední aktualizace: načítám…</div>
+  
   <div class="card">
     <canvas id="chart"></canvas>
   </div>
@@ -75,125 +79,135 @@
   </div>
 
   <script>
-    function formatDateCZ(isoDate) {
-      const d = new Date(isoDate);
-      return d.toLocaleDateString("cs-CZ");
-    }
+  function formatDateCZ(isoDate) {
+    const d = new Date(isoDate);
+    return d.toLocaleDateString("cs-CZ");
+  }
 
-    async function loadData() {
-      const status = document.getElementById("status");
+  async function loadData() {
+    const status = document.getElementById("status");
+    const lastUpdate = document.getElementById("lastUpdate");
 
-      try {
-        const response = await fetch("data.json");
-        if (!response.ok) {
-          throw new Error("HTTP " + response.status);
-        }
+    try {
+      const [dataResponse, lastRunResponse] = await Promise.all([
+        fetch("data.json"),
+        fetch("last_run.txt")
+      ]);
 
-        const data = await response.json();
+      if (!dataResponse.ok) {
+        throw new Error("data.json HTTP " + dataResponse.status);
+      }
 
-        if (!Array.isArray(data) || data.length === 0) {
-          status.textContent = "Soubor data.json je prázdný nebo má jiný formát.";
-          return;
-        }
+      const data = await dataResponse.json();
 
-        const dates = [...new Set(data.map(d => d.date))].sort();
-        const sources = [...new Set(data.map(d => d.source))];
+      if (lastRunResponse.ok) {
+        const lastRunText = await lastRunResponse.text();
+        lastUpdate.textContent = "Poslední aktualizace: " + lastRunText.trim();
+      } else {
+        lastUpdate.textContent = "Poslední aktualizace: není k dispozici";
+      }
 
-        const labels = dates.map(formatDateCZ);
+      if (!Array.isArray(data) || data.length === 0) {
+        status.textContent = "Soubor data.json je prázdný nebo má jiný formát.";
+        return;
+      }
 
-        const colors = [
-          "steelblue",
-          "orange",
-          "green",
-          "red",
-          "purple",
-          "teal",
-          "brown",
-          "magenta"
-        ];
+      const dates = [...new Set(data.map(d => d.date))].sort();
+      const sources = [...new Set(data.map(d => d.source))];
 
-        const datasets = sources.map((source, i) => ({
-          label: source,
-          backgroundColor: colors[i % colors.length],
-          data: dates.map(date => {
-            const row = data.find(d => d.date === date && d.source === source);
-            return row ? row.n_files : 0;
-          })
-        }));
+      const labels = dates.map(formatDateCZ);
 
-        new Chart(document.getElementById("chart"), {
-          type: "bar",
-          data: {
-            labels: labels,
-            datasets: datasets
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: {
-                position: "top"
-              },
-              tooltip: {
-                callbacks: {
-                  title: function(items) {
-                    const idx = items[0].dataIndex;
-                    return labels[idx];
-                  }
-                }
-              }
+      const colors = [
+        "steelblue",
+        "orange",
+        "green",
+        "red",
+        "purple",
+        "teal",
+        "brown",
+        "magenta"
+      ];
+
+      const datasets = sources.map((source, i) => ({
+        label: source,
+        backgroundColor: colors[i % colors.length],
+        data: dates.map(date => {
+          const row = data.find(d => d.date === date && d.source === source);
+          return row ? row.n_files : 0;
+        })
+      }));
+
+      new Chart(document.getElementById("chart"), {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: "top"
             },
-            scales: {
-              x: {
-                ticks: {
-                  maxRotation: 45,
-                  minRotation: 45
-                }
-              },
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  precision: 0
-                },
-                title: {
-                  display: true,
-                  text: "Počet souborů"
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  const idx = items[0].dataIndex;
+                  return labels[idx];
                 }
               }
             }
+          },
+          scales: {
+            x: {
+              ticks: {
+                maxRotation: 45,
+                minRotation: 45
+              }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0
+              },
+              title: {
+                display: true,
+                text: "Počet souborů"
+              }
+            }
           }
-        });
+        }
+      });
 
-        // tabulka: hlavička
-        const tableHead = document.getElementById("tableHead");
-        const tableBody = document.getElementById("tableBody");
+      const tableHead = document.getElementById("tableHead");
+      const tableBody = document.getElementById("tableBody");
 
-        let headHtml = "<tr><th>Datum</th>";
+      let headHtml = "<tr><th>Datum</th>";
+      sources.forEach(source => {
+        headHtml += `<th>${source}</th>`;
+      });
+      headHtml += "</tr>";
+      tableHead.innerHTML = headHtml;
+
+      tableBody.innerHTML = "";
+      dates.forEach(date => {
+        let rowHtml = `<tr><td>${formatDateCZ(date)}</td>`;
         sources.forEach(source => {
-          headHtml += `<th>${source}</th>`;
+          const row = data.find(d => d.date === date && d.source === source);
+          rowHtml += `<td>${row ? row.n_files : 0}</td>`;
         });
-        headHtml += "</tr>";
-        tableHead.innerHTML = headHtml;
+        rowHtml += "</tr>";
+        tableBody.innerHTML += rowHtml;
+      });
 
-        // tabulka: řádky
-        tableBody.innerHTML = "";
-        dates.forEach(date => {
-          let rowHtml = `<tr><td>${formatDateCZ(date)}</td>`;
-          sources.forEach(source => {
-            const row = data.find(d => d.date === date && d.source === source);
-            rowHtml += `<td>${row ? row.n_files : 0}</td>`;
-          });
-          rowHtml += "</tr>";
-          tableBody.innerHTML += rowHtml;
-        });
-
-        status.textContent = `Načteno ${data.length} záznamů, ${dates.length} dnů, ${sources.length} adresářů.`;
-      } catch (err) {
-        status.textContent = "Chyba při načítání data.json: " + err.message;
-        console.error(err);
-      }
+      status.textContent = `Načteno ${data.length} záznamů, ${dates.length} dnů, ${sources.length} adresářů.`;
+    } catch (err) {
+      status.textContent = "Chyba při načítání dat: " + err.message;
+      console.error(err);
     }
+  }
 
-    loadData();
-  </script>
+  loadData();
+</script>
 </body>
 </html>
