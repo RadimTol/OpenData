@@ -2,7 +2,7 @@ name: Update data.json
 
 on:
   schedule:
-    - cron: "15 3 * * *"
+    - cron: "15 4 * * *"
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,7 @@ jobs:
 
       - name: Install R packages
         run: |
-          Rscript -e "install.packages(c('stringr','dplyr','lubridate','jsonlite'), repos='https://cloud.r-project.org')"
+          Rscript -e "install.packages(c('stringr','dplyr','lubridate','jsonlite','tidyr'), repos='https://cloud.r-project.org')"
 
       - name: Run update script
         run: Rscript update_data.R
