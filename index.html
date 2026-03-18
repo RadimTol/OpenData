@@ -99,7 +99,23 @@
 
       if (lastRunResponse.ok) {
         const lastRunText = await lastRunResponse.text();
-        lastUpdate.textContent = "Poslední aktualizace: " + lastRunText.trim();
+       const utcText = lastRunText.trim();
+
+// vytvořit datum z UTC textu
+const date = new Date(utcText.replace(" UTC", "Z"));
+
+// převod do českého času
+const local = date.toLocaleString("cs-CZ", {
+  timeZone: "Europe/Prague",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit"
+});
+
+lastUpdate.textContent = "Poslední aktualizace: " + local;
       } else {
         lastUpdate.textContent = "Poslední aktualizace: není k dispozici";
       }
