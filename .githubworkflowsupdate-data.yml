@@ -2,7 +2,7 @@ name: Update data.json
 
 on:
   schedule:
-    - cron: "15 3 * * *"
+    - cron: "15 4 * * *"
   workflow_dispatch:
 
 permissions:
@@ -29,19 +29,27 @@ jobs:
       - name: Write last run timestamp
         run: |
           date -u +"%Y-%m-%d %H:%M:%S UTC" > last_run.txt
+          echo "Obsah last_run.txt:"
+          cat last_run.txt
 
-      - name: Commit and push if changed
+      - name: Debug git status
         run: |
-    
-    git config user.name "github-actions[bot]"
-    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-    git add -A
-    git commit -m "Automatická aktualizace dat" || echo "Nothing to commit"
-    git push
+          echo "Aktuální adresář:"
+          pwd
+          echo "Soubory:"
+          ls -la
+          echo "Git status před add:"
+          git status --short
 
-          if git diff --staged --quiet; then
-            echo "Žádná změna"
-          else
-            git commit -m "Automatická aktualizace dat"
-            git push
-          fi
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          echo "Git status po add:"
+          git status --short
+
+          git commit -m "Automatická aktualizace dat" || echo "Nothing to commit"
+          git push
