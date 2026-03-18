@@ -36,16 +36,16 @@
     }
 
     .left-panel {
-      flex: 1 1 62%;
-      min-width: 500px;
+      flex: 1 1 68%;
+      min-width: 520px;
     }
 
     .right-panel {
-      flex: 1 1 34%;
-      min-width: 320px;
+      flex: 0 0 300px;
+      min-width: 280px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 16px;
     }
 
     .card {
@@ -59,17 +59,19 @@
     .pie-card {
       background: white;
       border-radius: 10px;
-      padding: 16px;
+      padding: 14px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
     .pie-card h2 {
-      font-size: 18px;
-      margin: 0 0 12px 0;
+      font-size: 16px;
+      margin: 0 0 10px 0;
     }
 
     .pie-wrap {
-      height: 320px;
+      height: 220px;
+      width: 220px;
+      margin: 0 auto;
       position: relative;
     }
 
@@ -144,6 +146,17 @@
       return String(h).padStart(2, "0") + ":00";
     }
 
+    function pieColors(values) {
+      const palette = [
+        "#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
+        "#DD4477", "#66AA00", "#B82E2E", "#316395", "#994499", "#22AA99",
+        "#AAAA11", "#6633CC", "#E67300", "#8B0707", "#651067", "#329262",
+        "#5574A6", "#3B3EAC", "#B77322", "#16D620", "#B91383", "#F4359E"
+      ];
+
+      return values.map((v, i) => v > 0 ? palette[i] : "#e6e6e6");
+    }
+
     async function loadData() {
       const status = document.getElementById("status");
       const lastUpdate = document.getElementById("lastUpdate");
@@ -155,31 +168,28 @@
         const lastRunResponse = await fetch("last_run.txt").catch(() => null);
 
         if (!dataResponse.ok) {
-  throw new Error("data.json HTTP " + dataResponse.status);
-}
+          throw new Error("data.json HTTP " + dataResponse.status);
+        }
 
-const data = await dataResponse.json();
+        const data = await dataResponse.json();
 
-let nowHourly = [];
-if (nowHourlyResponse && nowHourlyResponse.ok) {
-  nowHourly = await nowHourlyResponse.json();
-}
+        let nowHourly = [];
+        if (nowHourlyResponse && nowHourlyResponse.ok) {
+          nowHourly = await nowHourlyResponse.json();
+        }
 
-if (lastRunResponse && lastRunResponse.ok) {
-  const lastRunText = await lastRunResponse.text();
-  lastUpdate.textContent = "Poslední aktualizace: " + formatLocalTimestamp(lastRunText.trim());
-} else {
-  lastUpdate.textContent = "Poslední aktualizace: není k dispozici";
-}
+        if (lastRunResponse && lastRunResponse.ok) {
+          const lastRunText = await lastRunResponse.text();
+          lastUpdate.textContent = "Poslední aktualizace: " + formatLocalTimestamp(lastRunText.trim());
+        } else {
+          lastUpdate.textContent = "Poslední aktualizace: není k dispozici";
+        }
 
         if (!Array.isArray(data) || data.length === 0) {
           status.textContent = "Soubor data.json je prázdný nebo má jiný formát.";
           return;
         }
 
-        // -----------------------------
-        // Levý sloupcový graf
-        // -----------------------------
         const dates = [...new Set(data.map(d => d.date))].sort();
         const sources = [...new Set(data.map(d => d.source))];
         const labels = dates.map(formatDateCZ);
@@ -246,17 +256,8 @@ if (lastRunResponse && lastRunResponse.ok) {
           }
         });
 
-        // -----------------------------
-        // Pravé 3 koláčové grafy pro NOW
-        // -----------------------------
         if (Array.isArray(nowHourly) && nowHourly.length > 0) {
           const nowDays = [...new Set(nowHourly.map(d => d.day))].sort();
-          const hourPalette = [
-            "#3366CC","#DC3912","#FF9900","#109618","#990099","#0099C6",
-            "#DD4477","#66AA00","#B82E2E","#316395","#994499","#22AA99",
-            "#AAAA11","#6633CC","#E67300","#8B0707","#651067","#329262",
-            "#5574A6","#3B3EAC","#B77322","#16D620","#B91383","#F4359E"
-          ];
 
           piePanel.innerHTML = "";
 
@@ -282,17 +283,16 @@ if (lastRunResponse && lastRunResponse.ok) {
                 labels: Array.from({ length: 24 }, (_, h) => hourLabel(h)),
                 datasets: [{
                   data: values,
-                  backgroundColor: hourPalette
+                  backgroundColor: pieColors(values),
+                  borderColor: "#ffffff",
+                  borderWidth: 1
                 }]
               },
               options: {
                 responsive: true,
                 plugins: {
                   legend: {
-                    position: "right",
-                    labels: {
-                      boxWidth: 12
-                    }
+                    display: false
                   },
                   tooltip: {
                     callbacks: {
@@ -307,9 +307,6 @@ if (lastRunResponse && lastRunResponse.ok) {
           });
         }
 
-        // -----------------------------
-        // Tabulka dole - beze změny
-        // -----------------------------
         const tableHead = document.getElementById("tableHead");
         const tableBody = document.getElementById("tableBody");
 
