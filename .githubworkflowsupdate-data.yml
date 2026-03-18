@@ -32,10 +32,12 @@ jobs:
 
       - name: Commit and push if changed
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add data.json last_run.txt
+    
+    git config user.name "github-actions[bot]"
+    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+    git add data.json last_run.txt
+    git commit -m "Automatická aktualizace dat" || echo "Nothing to commit"
+    git push
 
           if git diff --staged --quiet; then
             echo "Žádná změna"
