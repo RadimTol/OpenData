@@ -91,186 +91,207 @@ th {
 </div>
 
 <div class="card">
-<table>
-<thead id="tableHead"></thead>
-<tbody id="tableBody"></tbody>
-</table>
+  <table>
+    <thead id="tableHead"></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
 </div>
 
 <script>
-
-function formatDateCZ(d){
+function formatDateCZ(d) {
   return new Date(d).toLocaleDateString("cs-CZ");
 }
 
-function formatLocalTimestamp(utcText){
-  const date = new Date(utcText.replace(" UTC","Z"));
-  return date.toLocaleString("cs-CZ",{timeZone:"Europe/Prague"});
+function formatMonthCZ(d) {
+  const dt = new Date(d);
+  return dt.toLocaleDateString("cs-CZ", {
+    month: "2-digit",
+    year: "numeric"
+  });
 }
 
-function hourLabel(h){
-  return String(h).padStart(2,"0")+":00";
+function formatLocalTimestamp(utcText) {
+  const date = new Date(utcText.replace(" UTC", "Z"));
+  return date.toLocaleString("cs-CZ", { timeZone: "Europe/Prague" });
 }
 
-function pieColors(values){
-  const palette=[
+function hourLabel(h) {
+  return String(h).padStart(2, "0") + ":00";
+}
+
+function pieColors(values) {
+  const palette = [
     "#3366CC","#DC3912","#FF9900","#109618","#990099","#0099C6",
     "#DD4477","#66AA00","#B82E2E","#316395","#994499","#22AA99",
     "#AAAA11","#6633CC","#E67300","#8B0707","#651067","#329262",
     "#5574A6","#3B3EAC","#B77322","#16D620","#B91383","#F4359E"
   ];
-  return values.map((v,i)=>v>0?palette[i]:"#e6e6e6");
+  return values.map((v, i) => v > 0 ? palette[i] : "#e6e6e6");
 }
 
-async function loadData(){
+async function loadData() {
+  const status = document.getElementById("status");
+  const piePanel = document.getElementById("piePanel");
 
-const status=document.getElementById("status");
-const piePanel=document.getElementById("piePanel");
+  try {
+    const data = await (await fetch("data.json")).json();
+    const nowHourly = await (await fetch("now_hourly.json")).json();
+    const lastRun = await fetch("last_run.txt").then(r => r.text()).catch(() => null);
 
-try{
+    if (lastRun) {
+      document.getElementById("lastUpdate").innerText =
+        "Poslední aktualizace: " + formatLocalTimestamp(lastRun.trim());
+    } else {
+      document.getElementById("lastUpdate").innerText =
+        "Poslední aktualizace: není k dispozici";
+    }
 
-const data=await (await fetch("data.json")).json();
-const nowHourly=await (await fetch("now_hourly.json")).json();
-const lastRun=await fetch("last_run.txt").then(r=>r.text()).catch(()=>null);
+    const dates = [...new Set(data.map(d => d.date))].sort();
+    const sources = [...new Set(data.map(d => d.source))];
+    const labels = dates.map(formatDateCZ);
 
-if(lastRun){
-  document.getElementById("lastUpdate").innerText=
-  "Poslední aktualizace: "+formatLocalTimestamp(lastRun.trim());
-}
+    const colors = {
+      now: "steelblue",
+      "1hour": "orange",
+      "10min": "green",
+      daily: "red",
+      phenomena: "purple"
+    };
 
-const dates=[...new Set(data.map(d=>d.date))].sort();
-const sources=[...new Set(data.map(d=>d.source))];
+    const datasets = sources.map(s => ({
+      label: s,
+      backgroundColor: colors[s] || "gray",
+      data: dates.map(d => {
+        const r = data.find(x => x.date === d && x.source === s);
+        return r ? r.n_files : 0;
+      })
+    }));
 
-const labels=dates.map(formatDateCZ);
-
-// barvy (důležité kvůli daily/phenomena)
-const colors={
-  now:"steelblue",
-  "1hour":"orange",
-  "10min":"green",
-  daily:"red",
-  phenomena:"purple"
-};
-
-const datasets=sources.map(s=>({
-  label:s,
-  backgroundColor:colors[s]||"gray",
-  data:dates.map(d=>{
-    const r=data.find(x=>x.date===d && x.source===s);
-    return r?r.n_files:0;
-  })
-}));
-
-new Chart(document.getElementById("chart"),{
-  type:"bar",
-  data:{labels,datasets},
-  options:{responsive:true}
-});
-
-
-// ---------- koláče ----------
-
-piePanel.innerHTML="";
-
-// NOW koláče
-const nowDays=[...new Set(nowHourly.map(d=>d.day))].sort();
-
-nowDays.forEach((day,i)=>{
-
-const values=Array.from({length:24},(_,h)=>{
-  const r=nowHourly.find(x=>x.day===day && x.hour===h);
-  return r?r.n_files:0;
-});
-
-const div=document.createElement("div");
-div.className="pie-card";
-div.innerHTML=`<h2>NOW ${formatDateCZ(day)}</h2><div class="pie-wrap"><canvas id="p${i}"></canvas></div>`;
-piePanel.appendChild(div);
-
-new Chart(document.getElementById(`p${i}`),{
-  type:"pie",
-  data:{
-    labels:Array.from({length:24},(_,h)=>hourLabel(h)),
-    datasets:[{
-      data:values,
-      backgroundColor:pieColors(values)
-    }]
-  },
-  options:{
-    plugins:{
-      legend:{display:false},
-      tooltip:{
-        callbacks:{
-          label:(c)=>c.raw===0?null:`${c.label}: ${c.raw}`
+    new Chart(document.getElementById("chart"), {
+      type: "bar",
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: "top"
+          }
         }
       }
-    }
-  }
-});
+    });
 
-});
+    piePanel.innerHTML = "";
 
+    // 3 koláče NOW
+    const nowDays = [...new Set(nowHourly.map(d => d.day))].sort();
 
-// ---------- 4. koláč daily vs phenomena ----------
+    nowDays.forEach((day, i) => {
+      const values = Array.from({ length: 24 }, (_, h) => {
+        const r = nowHourly.find(x => x.day === day && Number(x.hour) === h);
+        return r ? r.n_files : 0;
+      });
 
-const lastDate=dates[dates.length-1];
+      const div = document.createElement("div");
+      div.className = "pie-card";
+      div.innerHTML = `
+        <h2>NOW ${formatDateCZ(day)}</h2>
+        <div class="pie-wrap"><canvas id="p${i}"></canvas></div>
+      `;
+      piePanel.appendChild(div);
 
-const dailyVal = data.find(d=>d.date===lastDate && d.source==="daily")?.n_files || 0;
-const phenVal  = data.find(d=>d.date===lastDate && d.source==="phenomena")?.n_files || 0;
+      new Chart(document.getElementById(`p${i}`), {
+        type: "pie",
+        data: {
+          labels: Array.from({ length: 24 }, (_, h) => hourLabel(h)),
+          datasets: [{
+            data: values,
+            backgroundColor: pieColors(values)
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (c) => c.raw === 0 ? null : `${c.label}: ${c.raw}`
+              }
+            }
+          }
+        }
+      });
+    });
 
-const div=document.createElement("div");
-div.className="pie-card";
-div.innerHTML=`<h2>Daily vs Phenomena (${formatDateCZ(lastDate)})</h2>
-<div class="pie-wrap"><canvas id="pieDP"></canvas></div>`;
-piePanel.appendChild(div);
+    // 4. koláč: daily vs phenomena za poslední dostupný měsíc
+    const monthlyRows = data.filter(d =>
+      d.source === "daily" || d.source === "phenomena"
+    );
 
-new Chart(document.getElementById("pieDP"),{
-  type:"pie",
-  data:{
-    labels:["daily","phenomena"],
-    datasets:[{
-      data:[dailyVal,phenVal],
-      backgroundColor:[colors.daily,colors.phenomena]
-    }]
-  },
-  options:{
-    plugins:{
-      legend:{display:false},
-      tooltip:{
-        callbacks:{
-          label:(c)=>`${c.label}: ${c.raw}`
+    monthlyRows.sort((a, b) => a.date.localeCompare(b.date));
+
+    const lastMonthlyDate = monthlyRows.length > 0
+      ? monthlyRows[monthlyRows.length - 1].date
+      : null;
+
+    const dailyVal = lastMonthlyDate
+      ? (data.find(d => d.date === lastMonthlyDate && d.source === "daily")?.n_files || 0)
+      : 0;
+
+    const phenVal = lastMonthlyDate
+      ? (data.find(d => d.date === lastMonthlyDate && d.source === "phenomena")?.n_files || 0)
+      : 0;
+
+    const div = document.createElement("div");
+    div.className = "pie-card";
+    div.innerHTML = `
+      <h2>Daily vs Phenomena – ${lastMonthlyDate ? formatMonthCZ(lastMonthlyDate) : "není k dispozici"}</h2>
+      <div class="pie-wrap"><canvas id="pieDP"></canvas></div>
+    `;
+    piePanel.appendChild(div);
+
+    new Chart(document.getElementById("pieDP"), {
+      type: "pie",
+      data: {
+        labels: ["daily", "phenomena"],
+        datasets: [{
+          data: [dailyVal, phenVal],
+          backgroundColor: [colors.daily, colors.phenomena]
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (c) => c.raw === 0 ? null : `${c.label}: ${c.raw}`
+            }
+          }
         }
       }
-    }
+    });
+
+    // Tabulka dole
+    let head = "<tr><th>Datum</th>";
+    sources.forEach(s => head += `<th>${s}</th>`);
+    head += "</tr>";
+    document.getElementById("tableHead").innerHTML = head;
+
+    let body = "";
+    dates.forEach(d => {
+      body += `<tr><td>${formatDateCZ(d)}</td>`;
+      sources.forEach(s => {
+        const r = data.find(x => x.date === d && x.source === s);
+        body += `<td>${r ? r.n_files : 0}</td>`;
+      });
+      body += "</tr>";
+    });
+    document.getElementById("tableBody").innerHTML = body;
+
+    status.innerText = "OK";
+
+  } catch (e) {
+    status.innerText = "Chyba: " + e.message;
+    console.error(e);
   }
-});
-
-
-// ---------- tabulka ----------
-
-let head="<tr><th>Datum</th>";
-sources.forEach(s=>head+=`<th>${s}</th>`);
-head+="</tr>";
-document.getElementById("tableHead").innerHTML=head;
-
-let body="";
-dates.forEach(d=>{
-  body+=`<tr><td>${formatDateCZ(d)}</td>`;
-  sources.forEach(s=>{
-    const r=data.find(x=>x.date===d && x.source===s);
-    body+=`<td>${r?r.n_files:0}</td>`;
-  });
-  body+="</tr>";
-});
-document.getElementById("tableBody").innerHTML=body;
-
-status.innerText="OK";
-
-}catch(e){
-status.innerText="Chyba: "+e.message;
-console.error(e);
-}
-
 }
 
 loadData();
