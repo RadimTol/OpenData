@@ -116,7 +116,7 @@ th {
 </style>
 </head>
 
-<body>
+<>
 
 <div class="top-bar">
   <a href="index.html" class="back-btn">← Back</a>
@@ -142,7 +142,7 @@ th {
 <div class="card">
   <table>
     <thead id="tableHead"></thead>
-    <tbody id="tableBody"></tbody>
+    <t id="table"></t>
   </table>
 </div>
 
@@ -324,16 +324,16 @@ async function loadData() {
     head += "</tr>";
     document.getElementById("tableHead").innerHTML = head;
 
-    let body = "";
+    let  = "";
     dates.forEach(d => {
-      body += `<tr><td>${formatDateCZ(d)}</td>`;
+       += `<tr><td>${formatDateCZ(d)}</td>`;
       sources.forEach(s => {
         const r = data.find(x => x.date === d && x.source === s);
-        body += `<td>${r ? r.n_files : 0}</td>`;
+         += `<td>${r ? r.n_files : 0}</td>`;
       });
-      body += "</tr>";
+       += "</tr>";
     });
-    document.getElementById("tableBody").innerHTML = body;
+    document.getElementById("table").innerHTML = ;
 
     status.innerText = "OK";
 
@@ -346,5 +346,13 @@ async function loadData() {
 loadData();
 </script>
 
+<script>
+function forceReload() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('_t', Date.now());
+  window.location.href = url.toString();
+}
+</script>
+  
 </body>
 </html>
