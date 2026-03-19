@@ -68,7 +68,7 @@ body {
 
 .pie-card h2 {
   font-size: 14px;
-  margin: 0 0 8px 0;
+  margin-bottom: 8px;
 }
 
 .pie-wrap {
@@ -90,7 +90,6 @@ table {
 th, td {
   border-bottom: 1px solid #ddd;
   padding: 8px;
-  text-align: left;
 }
 
 th {
@@ -98,17 +97,13 @@ th {
 }
 
 @media (max-width: 900px) {
-  .left-panel,
+  .left-panel {
+    min-width: 100%;
+    display: block;
+  }
+
   .right-panel {
     min-width: 100%;
-  }
-
-  .right-panel {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .left-panel {
-    display: block;
   }
 }
 
@@ -131,6 +126,7 @@ th {
 <div class="small" id="lastUpdate"></div>
 
 <div class="top-layout">
+
   <div class="left-panel">
     <div class="card">
       <canvas id="chart"></canvas>
@@ -138,6 +134,7 @@ th {
   </div>
 
   <div class="right-panel" id="piePanel"></div>
+
 </div>
 
 <div class="card">
@@ -176,7 +173,7 @@ function pieColors(values) {
     "#AAAA11","#6633CC","#E67300","#8B0707","#651067","#329262",
     "#5574A6","#3B3EAC","#B77322","#16D620","#B91383","#F4359E"
   ];
-  return values.map((v, i) => v > 0 ? palette[i % palette.length] : "#e6e6e6");
+  return values.map((v, i) => v > 0 ? palette[i] : "#e6e6e6");
 }
 
 async function loadData() {
@@ -232,6 +229,7 @@ async function loadData() {
 
     piePanel.innerHTML = "";
 
+    // 3 koláče NOW
     const nowDays = [...new Set(nowHourly.map(d => d.day))].sort();
 
     nowDays.forEach((day, i) => {
@@ -270,6 +268,7 @@ async function loadData() {
       });
     });
 
+    // 4. koláč: daily vs phenomena za poslední dostupný měsíc
     const monthlyRows = data.filter(d =>
       d.source === "daily" || d.source === "phenomena"
     );
@@ -317,6 +316,7 @@ async function loadData() {
       }
     });
 
+    // Tabulka dole
     let head = "<tr><th>Datum</th>";
     sources.forEach(s => head += `<th>${s}</th>`);
     head += "</tr>";
