@@ -41,8 +41,8 @@
     }
 
     .right-panel {
-      flex: 0 0 360px;
-      min-width: 320px;
+      flex: 0 0 300px;
+      min-width: 280px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -56,20 +56,22 @@
       margin-bottom: 20px;
     }
 
-    .mini-card {
+    .pie-card {
       background: white;
       border-radius: 10px;
       padding: 14px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
-    .mini-card h2 {
+    .pie-card h2 {
       font-size: 16px;
       margin: 0 0 10px 0;
     }
 
-    .mini-wrap {
-      height: 180px;
+    .pie-wrap {
+      height: 220px;
+      width: 220px;
+      margin: 0 auto;
       position: relative;
     }
 
@@ -106,8 +108,8 @@
       </div>
     </div>
 
-    <div class="right-panel" id="miniPanel">
-      <!-- 3 malé histogramy pro NOW -->
+    <div class="right-panel" id="piePanel">
+      <!-- 3 koláče pro NOW -->
     </div>
   </div>
 
@@ -141,17 +143,24 @@
     }
 
     function hourLabel(h) {
-      return String(h).padStart(2, "0");
+      return String(h).padStart(2, "0") + ":00";
     }
 
-    function hourlyBarColors(values) {
-      return values.map(v => v > 0 ? "steelblue" : "#e6e6e6");
+    function pieColors(values) {
+      const palette = [
+        "#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
+        "#DD4477", "#66AA00", "#B82E2E", "#316395", "#994499", "#22AA99",
+        "#AAAA11", "#6633CC", "#E67300", "#8B0707", "#651067", "#329262",
+        "#5574A6", "#3B3EAC", "#B77322", "#16D620", "#B91383", "#F4359E"
+      ];
+
+      return values.map((v, i) => v > 0 ? palette[i] : "#e6e6e6");
     }
 
     async function loadData() {
       const status = document.getElementById("status");
       const lastUpdate = document.getElementById("lastUpdate");
-      const miniPanel = document.getElementById("miniPanel");
+      const piePanel = document.getElementById("piePanel");
 
       try {
         const dataResponse = await fetch("data.json");
@@ -181,7 +190,6 @@
           return;
         }
 
-        // Hlavní graf vlevo
         const dates = [...new Set(data.map(d => d.date))].sort();
         const sources = [...new Set(data.map(d => d.source))];
         const labels = dates.map(formatDateCZ);
@@ -248,73 +256,49 @@
           }
         });
 
-        // 3 malé histogramy vpravo
         if (Array.isArray(nowHourly) && nowHourly.length > 0) {
           const nowDays = [...new Set(nowHourly.map(d => d.day))].sort();
 
-          miniPanel.innerHTML = "";
+          piePanel.innerHTML = "";
 
           nowDays.forEach((day, idx) => {
             const card = document.createElement("div");
-            card.className = "mini-card";
+            card.className = "pie-card";
             card.innerHTML = `
               <h2>NOW po hodinách: ${formatDateCZ(day)}</h2>
-              <div class="mini-wrap">
-                <canvas id="mini_${idx}"></canvas>
+              <div class="pie-wrap">
+                <canvas id="pie_${idx}"></canvas>
               </div>
             `;
-            miniPanel.appendChild(card);
+            piePanel.appendChild(card);
 
             const values = Array.from({ length: 24 }, (_, h) => {
               const row = nowHourly.find(d => d.day === day && Number(d.hour) === h);
               return row ? row.n_files : 0;
             });
 
-            new Chart(document.getElementById(`mini_${idx}`), {
-              type: "bar",
+            new Chart(document.getElementById(`pie_${idx}`), {
+              type: "pie",
               data: {
                 labels: Array.from({ length: 24 }, (_, h) => hourLabel(h)),
                 datasets: [{
                   data: values,
-                  backgroundColor: hourlyBarColors(values),
-                  borderWidth: 0
+                  backgroundColor: pieColors(values),
+                  borderColor: "#ffffff",
+                  borderWidth: 1
                 }]
               },
               options: {
                 responsive: true,
-                maintainAspectRatio: false,
                 plugins: {
                   legend: {
                     display: false
                   },
                   tooltip: {
                     callbacks: {
-                      title: function(items) {
-                        return `${items[0].label}:00`;
-                      },
                       label: function(context) {
-                        return `Počet souborů: ${context.raw}`;
+                        return `${context.label}: ${context.raw}`;
                       }
-                    }
-                  }
-                },
-                scales: {
-                  x: {
-                    ticks: {
-                      autoSkip: true,
-                      maxTicksLimit: 8
-                    },
-                    grid: {
-                      display: false
-                    }
-                  },
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      precision: 0
-                    },
-                    grid: {
-                      color: "#eeeeee"
                     }
                   }
                 }
@@ -323,7 +307,6 @@
           });
         }
 
-        // Tabulka dole - beze změny
         const tableHead = document.getElementById("tableHead");
         const tableBody = document.getElementById("tableBody");
 
