@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="cs">
 <head>
 <meta charset="UTF-8" />
@@ -114,14 +113,13 @@ th {
   }
 }
 </style>
-
 </head>
 
 <body>
 
 <div class="top-bar">
   <a href="index.html" class="back-btn">← Back</a>
-  <button onclick="forceReload()" class="back-btn">🔄 Obnovit</button>
+  <button onclick="forceReload()" class="back-btn" type="button">🔄 Obnovit</button>
 </div>
 
 <h1>Počet souborů podle dne a adresáře</h1>
@@ -129,7 +127,6 @@ th {
 <div class="small" id="lastUpdate"></div>
 
 <div class="top-layout">
-
   <div class="left-panel">
     <div class="card">
       <canvas id="chart"></canvas>
@@ -137,7 +134,6 @@ th {
   </div>
 
   <div class="right-panel" id="piePanel"></div>
-
 </div>
 
 <div class="card">
@@ -150,7 +146,7 @@ th {
 <script>
 function forceReload() {
   const url = new URL(window.location.href);
-  url.searchParams.set('_t', Date.now());
+  url.searchParams.set("_t", Date.now());
   window.location.href = url.toString();
 }
 
@@ -182,7 +178,23 @@ function pieColors(values) {
     "#AAAA11","#6633CC","#E67300","#8B0707","#651067","#329262",
     "#5574A6","#3B3EAC","#B77322","#16D620","#B91383","#F4359E"
   ];
-  return values.map((v, i) => v > 0 ? palette[i] : "#e6e6e6");
+  return values.map((v, i) => v > 0 ? palette[i % palette.length] : "#e6e6e6");
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error("Nelze načíst " + url + " (" + response.status + ")");
+  }
+  return response.json();
+}
+
+async function fetchText(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error("Nelze načíst " + url + " (" + response.status + ")");
+  }
+  return response.text();
 }
 
 async function loadData() {
@@ -190,9 +202,11 @@ async function loadData() {
   const piePanel = document.getElementById("piePanel");
 
   try {
-    const data = await (await fetch("data.json")).json();
-    const nowHourly = await (await fetch("now_hourly.json")).json();
-    const lastRun = await fetch("last_run.txt").then(r => r.text()).catch(() => null);
+    const [data, nowHourly, lastRun] = await Promise.all([
+      fetchJson("data.json"),
+      fetchJson("now_hourly.json"),
+      fetchText("last_run.txt").catch(() => null)
+    ]);
 
     if (lastRun) {
       document.getElementById("lastUpdate").innerText =
@@ -244,15 +258,14 @@ async function loadData() {
         return r ? r.n_files : 0;
       });
 
-      const div = document.createElement("div");
-      div.className = "pie-card";
-      div.innerHTML = `
-        <h2>now ${formatDateCZ(day)}</h2>
-        <div class="pie-wrap"><canvas id="p${i}"></canvas></div>
-      `;
-      piePanel.appendChild(div);
+      const card = document.createElement("div");
+      card.className = "pie-card";
+      card.innerHTML =
+        '<h2>now ' + formatDateCZ(day) + '</h2>' +
+        '<div class="pie-wrap"><canvas id="p' + i + '"></canvas></div>';
+      piePanel.appendChild(card);
 
-      new Chart(document.getElementById(`p${i}`), {
+      new Chart(document.getElementById("p" + i), {
         type: "pie",
         data: {
           labels: Array.from({ length: 24 }, (_, h) => hourLabel(h)),
@@ -263,10 +276,93 @@ async function loadData() {
         },
         options: {
           plugins: {
-            legend: { display: false }
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(c) {
+                  return c.raw === 0 ? null : c.label + ": " + c.raw;
+                }
+              }
+            }
           }
         }
       });
     });
 
-    const monthlyRows = data.fi
+    const monthlyRows = data.filter(d =>
+      d.source === "daily" || d.source === "phenomena"
+    ).sort((a, b) => a.date.localeCompare(b.date));
+
+    const lastMonthlyDate = monthlyRows.length
+      ? monthlyRows[monthlyRows.length - 1].date
+      : null;
+
+    const dailyVal = lastMonthlyDate
+      ? (data.find(d => d.date === lastMonthlyDate && d.source === "daily")?.n_files || 0)
+      : 0;
+
+    const phenVal = lastMonthlyDate
+      ? (data.find(d => d.date === lastMonthlyDate && d.source === "phenomena")?.n_files || 0)
+      : 0;
+
+    const dpCard = document.createElement("div");
+    dpCard.className = "pie-card";
+    dpCard.innerHTML =
+      '<h2>Daily vs Phenomena – ' +
+      (lastMonthlyDate ? formatMonthCZ(lastMonthlyDate) : "není k dispozici") +
+      '</h2><div class="pie-wrap"><canvas id="pieDP"></canvas></div>';
+    piePanel.appendChild(dpCard);
+
+    new Chart(document.getElementById("pieDP"), {
+      type: "pie",
+      data: {
+        labels: ["daily", "phenomena"],
+        datasets: [{
+          data: [dailyVal, phenVal],
+          backgroundColor: [colors.daily, colors.phenomena]
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(c) {
+                return c.raw === 0 ? null : c.label + ": " + c.raw;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    let head = "<tr><th>Datum</th>";
+    sources.forEach(s => {
+      head += "<th>" + s + "</th>";
+    });
+    head += "</tr>";
+    document.getElementById("tableHead").innerHTML = head;
+
+    let body = "";
+    dates.forEach(d => {
+      body += "<tr><td>" + formatDateCZ(d) + "</td>";
+      sources.forEach(s => {
+        const r = data.find(x => x.date === d && x.source === s);
+        body += "<td>" + (r ? r.n_files : 0) + "</td>";
+      });
+      body += "</tr>";
+    });
+    document.getElementById("tableBody").innerHTML = body;
+
+    status.innerText = "OK";
+  } catch (e) {
+    status.innerText = "Chyba: " + e.message;
+    console.error(e);
+  }
+}
+
+loadData();
+</script>
+
+</body>
+</html>
