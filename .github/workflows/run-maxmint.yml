@@ -22,7 +22,7 @@ jobs:
 
       - name: Install R packages
         run: |
-          Rscript -e "install.packages(c('jsonlite','httr','dplyr'), repos='https://cloud.r-project.org')"
+           Rscript -e "packages <- c('jsonlite','httr','dplyr','purrr'); install.packages(packages, repos='https://cloud.r-project.org')"
 
       - name: Run MaxMinT.R
         run: |
