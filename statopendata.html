@@ -15,7 +15,6 @@ body {
   color: #222;
 }
 
-/* 🔹 BACK BUTTON */
 .top-bar {
   display: flex;
   justify-content: flex-end;
@@ -38,18 +37,18 @@ body {
   background: #0b77c5;
 }
 
-/* 🔹 LAYOUT */
 .top-layout {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
+  align-items: stretch;
 }
 
 .left-panel {
   flex: 1 1 55%;
   min-width: 480px;
   display: flex;
-  align-items: center; /* ← centrování grafu */
+  align-items: center;
 }
 
 .right-panel {
@@ -97,8 +96,24 @@ th, td {
 th {
   background: #eef3f8;
 }
-</style>
 
+@media (max-width: 900px) {
+  .left-panel {
+    min-width: 100%;
+    display: block;
+  }
+
+  .right-panel {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .right-panel {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
 </head>
 
 <body>
@@ -206,13 +221,16 @@ async function loadData() {
       options: {
         responsive: true,
         plugins: {
-          legend: { position: "top" }
+          legend: {
+            position: "top"
+          }
         }
       }
     });
 
     piePanel.innerHTML = "";
 
+    // 3 koláče NOW
     const nowDays = [...new Set(nowHourly.map(d => d.day))].sort();
 
     nowDays.forEach((day, i) => {
@@ -240,11 +258,81 @@ async function loadData() {
         },
         options: {
           plugins: {
-            legend: { display: false }
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (c) => c.raw === 0 ? null : `${c.label}: ${c.raw}`
+              }
+            }
           }
         }
       });
     });
+
+    // 4. koláč: daily vs phenomena za poslední dostupný měsíc
+    const monthlyRows = data.filter(d =>
+      d.source === "daily" || d.source === "phenomena"
+    );
+
+    monthlyRows.sort((a, b) => a.date.localeCompare(b.date));
+
+    const lastMonthlyDate = monthlyRows.length > 0
+      ? monthlyRows[monthlyRows.length - 1].date
+      : null;
+
+    const dailyVal = lastMonthlyDate
+      ? (data.find(d => d.date === lastMonthlyDate && d.source === "daily")?.n_files || 0)
+      : 0;
+
+    const phenVal = lastMonthlyDate
+      ? (data.find(d => d.date === lastMonthlyDate && d.source === "phenomena")?.n_files || 0)
+      : 0;
+
+    const div = document.createElement("div");
+    div.className = "pie-card";
+    div.innerHTML = `
+      <h2>Daily vs Phenomena – ${lastMonthlyDate ? formatMonthCZ(lastMonthlyDate) : "není k dispozici"}</h2>
+      <div class="pie-wrap"><canvas id="pieDP"></canvas></div>
+    `;
+    piePanel.appendChild(div);
+
+    new Chart(document.getElementById("pieDP"), {
+      type: "pie",
+      data: {
+        labels: ["daily", "phenomena"],
+        datasets: [{
+          data: [dailyVal, phenVal],
+          backgroundColor: [colors.daily, colors.phenomena]
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (c) => c.raw === 0 ? null : `${c.label}: ${c.raw}`
+            }
+          }
+        }
+      }
+    });
+
+    // Tabulka dole
+    let head = "<tr><th>Datum</th>";
+    sources.forEach(s => head += `<th>${s}</th>`);
+    head += "</tr>";
+    document.getElementById("tableHead").innerHTML = head;
+
+    let body = "";
+    dates.forEach(d => {
+      body += `<tr><td>${formatDateCZ(d)}</td>`;
+      sources.forEach(s => {
+        const r = data.find(x => x.date === d && x.source === s);
+        body += `<td>${r ? r.n_files : 0}</td>`;
+      });
+      body += "</tr>";
+    });
+    document.getElementById("tableBody").innerHTML = body;
 
     status.innerText = "OK";
 
