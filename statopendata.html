@@ -23,6 +23,8 @@ body {
 .left-panel {
   flex: 1 1 55%;
   min-width: 480px;
+  display: flex;
+  align-items: center; 
 }
 
 .right-panel {
@@ -38,6 +40,7 @@ body {
   border-radius: 10px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  width: 100%; 
 }
 
 .pie-card h2 {
@@ -55,6 +58,28 @@ body {
   color: #666;
 }
 
+.top-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.back-btn {
+  background: #005aa3;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.back-btn:hover {
+  background: #0b77c5;
+}
+  
 table {
   border-collapse: collapse;
   width: 100%;
@@ -73,7 +98,9 @@ th {
 </head>
 
 <body>
-
+<div class="top-bar">
+  <a href="index.html" class="back-btn">
+</div>
 <h1>Počet souborů podle dne a adresáře</h1>
 <div id="status">Načítám…</div>
 <div class="small" id="lastUpdate"></div>
