@@ -1,341 +1,280 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Počet souborů podle dne a adresáře</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 24px;
-      background: #f7f7f7;
-      color: #222;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Počet souborů podle dne a adresáře</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    h1 {
-      margin-bottom: 8px;
-    }
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 24px;
+  background: #f7f7f7;
+  color: #222;
+}
 
-    .status {
-      margin-bottom: 8px;
-      color: #555;
-    }
+.top-layout {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
 
-    .small {
-      font-size: 0.92em;
-      color: #666;
-      margin-bottom: 16px;
-    }
+.left-panel {
+  flex: 1 1 55%;
+  min-width: 480px;
+}
 
-    .top-layout {
-      display: flex;
-      gap: 20px;
-      align-items: flex-start;
-      flex-wrap: wrap;
-    }
+.right-panel {
+  flex: 1 1 40%;
+  min-width: 320px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
 
-    .left-panel {
-      flex: 1 1 68%;
-      min-width: 520px;
-    }
+.card, .pie-card {
+  background: white;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
 
-    .right-panel {
-      flex: 0 0 300px;
-      min-width: 280px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
+.pie-card h2 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
 
-    .card {
-      background: white;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      margin-bottom: 20px;
-    }
+.pie-wrap {
+  height: 200px;
+  position: relative;
+}
 
-    .pie-card {
-      background: white;
-      border-radius: 10px;
-      padding: 14px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
+.small {
+  font-size: 0.9em;
+  color: #666;
+}
 
-    .pie-card h2 {
-      font-size: 16px;
-      margin: 0 0 10px 0;
-    }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 20px;
+}
 
-    .pie-wrap {
-      height: 220px;
-      width: 220px;
-      margin: 0 auto;
-      position: relative;
-    }
+th, td {
+  border-bottom: 1px solid #ddd;
+  padding: 8px;
+}
 
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-
-    th, td {
-      border-bottom: 1px solid #ddd;
-      padding: 8px 10px;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      background: #eef3f8;
-    }
-
-    #tableWrap {
-      overflow-x: auto;
-    }
-  </style>
+th {
+  background: #eef3f8;
+}
+</style>
 </head>
+
 <body>
-  <h1>Počet souborů podle dne a adresáře</h1>
-  <div class="status" id="status">Načítám data…</div>
-  <div class="small" id="lastUpdate">Poslední aktualizace: načítám…</div>
 
-  <div class="top-layout">
-    <div class="left-panel">
-      <div class="card">
-        <canvas id="chart"></canvas>
-      </div>
-    </div>
+<h1>Počet souborů podle dne a adresáře</h1>
+<div id="status">Načítám…</div>
+<div class="small" id="lastUpdate"></div>
 
-    <div class="right-panel" id="piePanel">
-      <!-- 3 koláče pro NOW -->
+<div class="top-layout">
+
+  <div class="left-panel">
+    <div class="card">
+      <canvas id="chart"></canvas>
     </div>
   </div>
 
-  <div class="card">
-    <div class="small">Tabulka zobrazuje počty souborů po dnech pro jednotlivé adresáře.</div>
-    <div id="tableWrap">
-      <table id="resultTable">
-        <thead id="tableHead"></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-  </div>
+  <div class="right-panel" id="piePanel"></div>
 
-  <script>
-    function formatDateCZ(isoDate) {
-      const d = new Date(isoDate);
-      return d.toLocaleDateString("cs-CZ");
-    }
+</div>
 
-    function formatLocalTimestamp(utcText) {
-      const date = new Date(utcText.replace(" UTC", "Z"));
-      return date.toLocaleString("cs-CZ", {
-        timeZone: "Europe/Prague",
-        year: "numeric",
-        month: "numeric",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-      });
-    }
+<div class="card">
+<table>
+<thead id="tableHead"></thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
 
-    function hourLabel(h) {
-      return String(h).padStart(2, "0") + ":00";
-    }
+<script>
 
-    function pieColors(values) {
-      const palette = [
-        "#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6",
-        "#DD4477", "#66AA00", "#B82E2E", "#316395", "#994499", "#22AA99",
-        "#AAAA11", "#6633CC", "#E67300", "#8B0707", "#651067", "#329262",
-        "#5574A6", "#3B3EAC", "#B77322", "#16D620", "#B91383", "#F4359E"
-      ];
+function formatDateCZ(d){
+  return new Date(d).toLocaleDateString("cs-CZ");
+}
 
-      return values.map((v, i) => v > 0 ? palette[i] : "#e6e6e6");
-    }
+function formatLocalTimestamp(utcText){
+  const date = new Date(utcText.replace(" UTC","Z"));
+  return date.toLocaleString("cs-CZ",{timeZone:"Europe/Prague"});
+}
 
-    async function loadData() {
-      const status = document.getElementById("status");
-      const lastUpdate = document.getElementById("lastUpdate");
-      const piePanel = document.getElementById("piePanel");
+function hourLabel(h){
+  return String(h).padStart(2,"0")+":00";
+}
 
-      try {
-        const dataResponse = await fetch("data.json");
-        const nowHourlyResponse = await fetch("now_hourly.json").catch(() => null);
-        const lastRunResponse = await fetch("last_run.txt").catch(() => null);
+function pieColors(values){
+  const palette=[
+    "#3366CC","#DC3912","#FF9900","#109618","#990099","#0099C6",
+    "#DD4477","#66AA00","#B82E2E","#316395","#994499","#22AA99",
+    "#AAAA11","#6633CC","#E67300","#8B0707","#651067","#329262",
+    "#5574A6","#3B3EAC","#B77322","#16D620","#B91383","#F4359E"
+  ];
+  return values.map((v,i)=>v>0?palette[i]:"#e6e6e6");
+}
 
-        if (!dataResponse.ok) {
-          throw new Error("data.json HTTP " + dataResponse.status);
+async function loadData(){
+
+const status=document.getElementById("status");
+const piePanel=document.getElementById("piePanel");
+
+try{
+
+const data=await (await fetch("data.json")).json();
+const nowHourly=await (await fetch("now_hourly.json")).json();
+const lastRun=await fetch("last_run.txt").then(r=>r.text()).catch(()=>null);
+
+if(lastRun){
+  document.getElementById("lastUpdate").innerText=
+  "Poslední aktualizace: "+formatLocalTimestamp(lastRun.trim());
+}
+
+const dates=[...new Set(data.map(d=>d.date))].sort();
+const sources=[...new Set(data.map(d=>d.source))];
+
+const labels=dates.map(formatDateCZ);
+
+// barvy (důležité kvůli daily/phenomena)
+const colors={
+  now:"steelblue",
+  "1hour":"orange",
+  "10min":"green",
+  daily:"red",
+  phenomena:"purple"
+};
+
+const datasets=sources.map(s=>({
+  label:s,
+  backgroundColor:colors[s]||"gray",
+  data:dates.map(d=>{
+    const r=data.find(x=>x.date===d && x.source===s);
+    return r?r.n_files:0;
+  })
+}));
+
+new Chart(document.getElementById("chart"),{
+  type:"bar",
+  data:{labels,datasets},
+  options:{responsive:true}
+});
+
+
+// ---------- koláče ----------
+
+piePanel.innerHTML="";
+
+// NOW koláče
+const nowDays=[...new Set(nowHourly.map(d=>d.day))].sort();
+
+nowDays.forEach((day,i)=>{
+
+const values=Array.from({length:24},(_,h)=>{
+  const r=nowHourly.find(x=>x.day===day && x.hour===h);
+  return r?r.n_files:0;
+});
+
+const div=document.createElement("div");
+div.className="pie-card";
+div.innerHTML=`<h2>NOW ${formatDateCZ(day)}</h2><div class="pie-wrap"><canvas id="p${i}"></canvas></div>`;
+piePanel.appendChild(div);
+
+new Chart(document.getElementById(`p${i}`),{
+  type:"pie",
+  data:{
+    labels:Array.from({length:24},(_,h)=>hourLabel(h)),
+    datasets:[{
+      data:values,
+      backgroundColor:pieColors(values)
+    }]
+  },
+  options:{
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        callbacks:{
+          label:(c)=>c.raw===0?null:`${c.label}: ${c.raw}`
         }
-
-        const data = await dataResponse.json();
-
-        let nowHourly = [];
-        if (nowHourlyResponse && nowHourlyResponse.ok) {
-          nowHourly = await nowHourlyResponse.json();
-        }
-
-        if (lastRunResponse && lastRunResponse.ok) {
-          const lastRunText = await lastRunResponse.text();
-          lastUpdate.textContent = "Poslední aktualizace: " + formatLocalTimestamp(lastRunText.trim());
-        } else {
-          lastUpdate.textContent = "Poslední aktualizace: není k dispozici";
-        }
-
-        if (!Array.isArray(data) || data.length === 0) {
-          status.textContent = "Soubor data.json je prázdný nebo má jiný formát.";
-          return;
-        }
-
-        const dates = [...new Set(data.map(d => d.date))].sort();
-        const sources = [...new Set(data.map(d => d.source))];
-        const labels = dates.map(formatDateCZ);
-
-        const colors = [
-          "steelblue",
-          "orange",
-          "green",
-          "red",
-          "purple",
-          "teal",
-          "brown",
-          "magenta"
-        ];
-
-        const datasets = sources.map((source, i) => ({
-          label: source,
-          backgroundColor: colors[i % colors.length],
-          data: dates.map(date => {
-            const row = data.find(d => d.date === date && d.source === source);
-            return row ? row.n_files : 0;
-          })
-        }));
-
-        new Chart(document.getElementById("chart"), {
-          type: "bar",
-          data: {
-            labels: labels,
-            datasets: datasets
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: {
-                position: "top"
-              },
-              tooltip: {
-                callbacks: {
-                  title: function(items) {
-                    const idx = items[0].dataIndex;
-                    return labels[idx];
-                  }
-                }
-              }
-            },
-            scales: {
-              x: {
-                ticks: {
-                  maxRotation: 45,
-                  minRotation: 45
-                }
-              },
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  precision: 0
-                },
-                title: {
-                  display: true,
-                  text: "Počet souborů"
-                }
-              }
-            }
-          }
-        });
-
-        if (Array.isArray(nowHourly) && nowHourly.length > 0) {
-          const nowDays = [...new Set(nowHourly.map(d => d.day))].sort();
-
-          piePanel.innerHTML = "";
-
-          nowDays.forEach((day, idx) => {
-            const card = document.createElement("div");
-            card.className = "pie-card";
-            card.innerHTML = `
-              <h2>NOW po hodinách: ${formatDateCZ(day)}</h2>
-              <div class="pie-wrap">
-                <canvas id="pie_${idx}"></canvas>
-              </div>
-            `;
-            piePanel.appendChild(card);
-
-            const values = Array.from({ length: 24 }, (_, h) => {
-              const row = nowHourly.find(d => d.day === day && Number(d.hour) === h);
-              return row ? row.n_files : 0;
-            });
-
-            new Chart(document.getElementById(`pie_${idx}`), {
-              type: "pie",
-              data: {
-                labels: Array.from({ length: 24 }, (_, h) => hourLabel(h)),
-                datasets: [{
-                  data: values,
-                  backgroundColor: pieColors(values),
-                  borderColor: "#ffffff",
-                  borderWidth: 1
-                }]
-              },
-              options: {
-                responsive: true,
-                plugins: {
-                  legend: {
-                    display: false
-                  },
-                  tooltip: {
-                    callbacks: {
-                      label: function(context) {
-                        return `${context.label}: ${context.raw}`;
-                      }
-                    }
-                  }
-                }
-              }
-            });
-          });
-        }
-
-        const tableHead = document.getElementById("tableHead");
-        const tableBody = document.getElementById("tableBody");
-
-        let headHtml = "<tr><th>Datum</th>";
-        sources.forEach(source => {
-          headHtml += `<th>${source}</th>`;
-        });
-        headHtml += "</tr>";
-        tableHead.innerHTML = headHtml;
-
-        tableBody.innerHTML = "";
-        dates.forEach(date => {
-          let rowHtml = `<tr><td>${formatDateCZ(date)}</td>`;
-          sources.forEach(source => {
-            const row = data.find(d => d.date === date && d.source === source);
-            rowHtml += `<td>${row ? row.n_files : 0}</td>`;
-          });
-          rowHtml += "</tr>";
-          tableBody.innerHTML += rowHtml;
-        });
-
-        status.textContent = `Načteno ${data.length} záznamů v přehledu a ${nowHourly.length} hodinových záznamů pro NOW.`;
-      } catch (err) {
-        status.textContent = "Chyba při načítání dat: " + err.message;
-        console.error(err);
       }
     }
+  }
+});
 
-    loadData();
-  </script>
+});
+
+
+// ---------- 4. koláč daily vs phenomena ----------
+
+const lastDate=dates[dates.length-1];
+
+const dailyVal = data.find(d=>d.date===lastDate && d.source==="daily")?.n_files || 0;
+const phenVal  = data.find(d=>d.date===lastDate && d.source==="phenomena")?.n_files || 0;
+
+const div=document.createElement("div");
+div.className="pie-card";
+div.innerHTML=`<h2>Daily vs Phenomena (${formatDateCZ(lastDate)})</h2>
+<div class="pie-wrap"><canvas id="pieDP"></canvas></div>`;
+piePanel.appendChild(div);
+
+new Chart(document.getElementById("pieDP"),{
+  type:"pie",
+  data:{
+    labels:["daily","phenomena"],
+    datasets:[{
+      data:[dailyVal,phenVal],
+      backgroundColor:[colors.daily,colors.phenomena]
+    }]
+  },
+  options:{
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        callbacks:{
+          label:(c)=>`${c.label}: ${c.raw}`
+        }
+      }
+    }
+  }
+});
+
+
+// ---------- tabulka ----------
+
+let head="<tr><th>Datum</th>";
+sources.forEach(s=>head+=`<th>${s}</th>`);
+head+="</tr>";
+document.getElementById("tableHead").innerHTML=head;
+
+let body="";
+dates.forEach(d=>{
+  body+=`<tr><td>${formatDateCZ(d)}</td>`;
+  sources.forEach(s=>{
+    const r=data.find(x=>x.date===d && x.source===s);
+    body+=`<td>${r?r.n_files:0}</td>`;
+  });
+  body+="</tr>";
+});
+document.getElementById("tableBody").innerHTML=body;
+
+status.innerText="OK";
+
+}catch(e){
+status.innerText="Chyba: "+e.message;
+console.error(e);
+}
+
+}
+
+loadData();
+</script>
+
 </body>
 </html>
