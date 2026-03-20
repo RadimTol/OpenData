@@ -1,7 +1,6 @@
-
 # install.packages(c(
-#   "jsonlite", "dplyr", "purrr", "stringr", "readr",
-#   "lubridate", "rvest", "xml2", "tibble"
+#   "jsonlite","dplyr","purrr","stringr","readr",
+#   "lubridate","rvest","xml2","tibble"
 # ))
 
 library(jsonlite)
@@ -24,39 +23,51 @@ base_meta_url <- "https://opendata.chmi.cz/meteorology/climate/now/metadata/"
 parse_chmi_json_values <- function(url) {
   x <- jsonlite::fromJSON(url, simplifyVector = FALSE)
 
-  # očekávaná cesta podle veřejného JSON formátu ČHMÚ
   vals <- x$data$data$values
   hdr  <- x$data$data$header
 
-  if (is.null(vals)) {
-    stop("V JSON nebylo nalezeno x$data$data$values: ", url)
+  if (is.null(vals) || is.null(hdr)) {
+    stop("V JSON nebyla nalezena očekávaná struktura data$data: ", url)
   }
 
-  # hlavička je obvykle "STATION,ELEMENT,DT,VAL,FLAG,QUALITY"
-  col_names <- str_split(hdr, ",", simplify = TRUE) |>
+  col_names <- stringr::str_split(hdr, ",", simplify = TRUE) |>
     as.character() |>
     trimws()
 
-  out <- as_tibble(do.call(rbind, vals), .name_repair = "minimal")
+  out <- tibble::as_tibble(do.call(rbind, vals), .name_repair = "minimal")
   names(out) <- col_names[seq_len(ncol(out))]
-
   out
 }
 
-get_today_files_from_index <- function(index_url, today = Sys.Date()) {
-  page <- read_html(index_url)
-  txt  <- html_text2(page)
+get_latest_file_by_pattern <- function(index_url, pattern) {
+  page <- rvest::read_html(index_url)
 
-  # Apache-style index, řádky typu:
-  # 10m-...json   19-Mar-2026 00:02   74971
+  hrefs <- page |>
+    rvest::html_elements("a") |>
+    rvest::html_attr("href")
+
+  hrefs <- hrefs[!is.na(hrefs)]
+  files <- hrefs[stringr::str_detect(hrefs, pattern)]
+
+  if (length(files) == 0) {
+    stop("Nenalezen soubor odpovídající patternu: ", pattern, " v ", index_url)
+  }
+
+  files <- sort(unique(files))
+  paste0(index_url, files[length(files)])
+}
+
+get_today_files_from_index <- function(index_url, today = Sys.Date()) {
+  page <- rvest::read_html(index_url)
+  txt  <- rvest::html_text2(page)
+
   lines <- unlist(strsplit(txt, "\n", fixed = TRUE))
   lines <- trimws(lines)
   lines <- lines[nzchar(lines)]
 
   today_str <- format(today, "%d-%b-%Y")
 
-  # bereme jen JSON soubory v /now/data/ vytvořené dnes
-  hits <- str_subset(
+  hits <- stringr::str_subset(
     lines,
     paste0("^.+\\.json\\s+", today_str, "\\s+\\d{2}:\\d{2}\\s+\\d+$")
   )
@@ -65,52 +76,67 @@ get_today_files_from_index <- function(index_url, today = Sys.Date()) {
     return(character(0))
   }
 
-  file_names <- str_match(hits, "^(.+?\\.json)\\s+\\d{2}-[A-Za-z]{3}-\\d{4}\\s+\\d{2}:\\d{2}\\s+\\d+$")[, 2]
+  file_names <- stringr::str_match(
+    hits,
+    "^(.+?\\.json)\\s+\\d{2}-[A-Za-z]{3}-\\d{4}\\s+\\d{2}:\\d{2}\\s+\\d+$"
+  )[, 2]
+
   file_names <- trimws(file_names)
-
-  # necháme jen 10m soubory, protože T/TMA/TMI jsou podle popisu mezi 10min prvky
-  file_names <- file_names[str_detect(file_names, "^10m-.*\\.json$")]
-
-  paste0(index_url, file_names)
+  unique(paste0(index_url, file_names))
 }
 
-get_meta1_url_for_today <- function(today = Sys.Date()) {
-  paste0(base_meta_url, "meta1-", format(today, "%Y%m%d"), ".json")
-}
+prepare_station_metadata <- function(meta1_url) {
+  meta_raw <- parse_chmi_json_values(meta1_url)
 
-prepare_station_metadata <- function(meta_url) {
-  meta_raw <- parse_chmi_json_values(meta_url)
-
-  # V meta1 je podle dokumentace FULL_NAME, nikoli NAME.
-  # Pro výstup ho přejmenujeme na NAME.
-  wanted <- c("GH_ID", "FULL_NAME", "ELEVATION")
-
-  missing_cols <- setdiff(wanted, names(meta_raw))
+  needed <- c("WSI", "GH_ID", "FULL_NAME", "ELEVATION")
+  missing_cols <- setdiff(needed, names(meta_raw))
   if (length(missing_cols) > 0) {
     stop("V meta1 chybí očekávané sloupce: ", paste(missing_cols, collapse = ", "))
   }
 
   meta_raw |>
-    transmute(
+    dplyr::transmute(
+      WSI       = as.character(WSI),
       STATION   = as.character(GH_ID),
       NAME      = as.character(FULL_NAME),
       ELEVATION = suppressWarnings(as.numeric(ELEVATION))
     ) |>
-    distinct(STATION, .keep_all = TRUE)
+    dplyr::distinct(WSI, .keep_all = TRUE)
 }
 
-read_today_data <- function(file_urls) {
-  if (length(file_urls) == 0) {
-    return(tibble(
-      STATION = character(),
-      ELEMENT = character(),
-      DT = character(),
-      VAL = numeric(),
-      FLAG = character(),
-      QUALITY = numeric()
-    ))
+get_wsi_for_elements <- function(meta2_url, elements = c("T", "TMA", "TMI")) {
+  meta2 <- parse_chmi_json_values(meta2_url)
+
+  needed <- c("WSI", "EG_EL_ABBREVIATION")
+  missing_cols <- setdiff(needed, names(meta2))
+  if (length(missing_cols) > 0) {
+    stop("V meta2 chybí očekávané sloupce: ", paste(missing_cols, collapse = ", "))
   }
 
+  meta2 |>
+    dplyr::transmute(
+      WSI = as.character(WSI),
+      EG_EL_ABBREVIATION = as.character(EG_EL_ABBREVIATION)
+    ) |>
+    dplyr::filter(EG_EL_ABBREVIATION %in% elements) |>
+    dplyr::distinct(WSI)
+}
+
+filter_files_by_wsi <- function(file_urls, wsi_vector) {
+  if (length(file_urls) == 0 || length(wsi_vector) == 0) {
+    return(character(0))
+  }
+
+  file_names <- basename(file_urls)
+
+  keep <- vapply(file_names, function(fn) {
+    any(stringr::str_detect(fn, stringr::fixed(wsi_vector)))
+  }, logical(1))
+
+  file_urls[keep]
+}
+
+read_now_data <- function(file_urls) {
   purrr::map_dfr(file_urls, function(u) {
     message("Načítám: ", u)
 
@@ -125,46 +151,49 @@ read_today_data <- function(file_urls) {
     }
 
     df |>
-      mutate(
+      dplyr::mutate(
         STATION = as.character(STATION),
         ELEMENT = as.character(ELEMENT),
-        DT = ymd_hms(DT, tz = "UTC", quiet = TRUE),
+        DT = suppressWarnings(lubridate::ymd_hms(DT, tz = "UTC", quiet = TRUE)),
         VAL = suppressWarnings(as.numeric(VAL))
       ) |>
-      filter(ELEMENT %in% c("T", "TMA", "TMI")) |>
-      filter(!is.na(DT), !is.na(VAL))
+      dplyr::filter(ELEMENT %in% c("T", "TMA", "TMI")) |>
+      dplyr::filter(!is.na(DT), !is.na(VAL))
   })
 }
 
 get_latest_per_station_element <- function(df) {
   df |>
-    arrange(STATION, ELEMENT, desc(DT)) |>
-    group_by(STATION, ELEMENT) |>
-    slice(1) |>
-    ungroup()
+    dplyr::arrange(STATION, ELEMENT, dplyr::desc(DT)) |>
+    dplyr::group_by(STATION, ELEMENT) |>
+    dplyr::slice(1) |>
+    dplyr::ungroup()
 }
 
 get_top_bottom3 <- function(df_latest, station_meta) {
   joined <- df_latest |>
-    left_join(station_meta, by = "STATION")
+    dplyr::left_join(
+      station_meta |> dplyr::select(STATION, NAME, ELEVATION),
+      by = "STATION"
+    )
 
   highest <- joined |>
-    group_by(ELEMENT) |>
-    arrange(desc(VAL), desc(DT), .by_group = TRUE) |>
-    slice_head(n = 3) |>
-    mutate(EXTREME = "MAX", RANK = row_number()) |>
-    ungroup()
+    dplyr::group_by(ELEMENT) |>
+    dplyr::arrange(dplyr::desc(VAL), dplyr::desc(DT), .by_group = TRUE) |>
+    dplyr::slice_head(n = 3) |>
+    dplyr::mutate(EXTREME = "MAX", RANK = dplyr::row_number()) |>
+    dplyr::ungroup()
 
   lowest <- joined |>
-    group_by(ELEMENT) |>
-    arrange(VAL, desc(DT), .by_group = TRUE) |>
-    slice_head(n = 3) |>
-    mutate(EXTREME = "MIN", RANK = row_number()) |>
-    ungroup()
+    dplyr::group_by(ELEMENT) |>
+    dplyr::arrange(VAL, dplyr::desc(DT), .by_group = TRUE) |>
+    dplyr::slice_head(n = 3) |>
+    dplyr::mutate(EXTREME = "MIN", RANK = dplyr::row_number()) |>
+    dplyr::ungroup()
 
-  bind_rows(highest, lowest) |>
-    select(ELEMENT, EXTREME, RANK, STATION, NAME, ELEVATION, DT, VAL) |>
-    arrange(ELEMENT, EXTREME, RANK)
+  dplyr::bind_rows(highest, lowest) |>
+    dplyr::select(ELEMENT, EXTREME, RANK, STATION, NAME, ELEVATION, DT, VAL) |>
+    dplyr::arrange(ELEMENT, EXTREME, RANK)
 }
 
 # ------------------------------------------------------------
@@ -173,32 +202,33 @@ get_top_bottom3 <- function(df_latest, station_meta) {
 
 today <- Sys.Date()
 
-# 1) soubory vytvořené dnes v /now/data/
-today_files <- get_today_files_from_index(base_data_url, today)
+data_files_all <- get_today_files_from_index(base_data_url, today)
 
-if (length(today_files) == 0) {
-  stop("V ", base_data_url, " nebyly nalezeny žádné 10m JSON soubory vytvořené dnes.")
+if (length(data_files_all) == 0) {
+  stop("Nenalezeny dnešní JSON soubory v ", base_data_url)
 }
 
-# 2) dnešní meta1
-meta_url <- get_meta1_url_for_today(today)
-station_meta <- prepare_station_metadata(meta_url)
+meta2_url <- get_latest_file_by_pattern(base_meta_url, "^meta2-\\d{8}\\.json$")
+meta1_url <- get_latest_file_by_pattern(base_meta_url, "^meta1-\\d{8}\\.json$")
 
-# 3) načtení dnešních souborů
-raw_data <- read_today_data(today_files)
+wsi_tbl <- get_wsi_for_elements(meta2_url, c("T", "TMA", "TMI"))
+data_files <- filter_files_by_wsi(data_files_all, wsi_tbl$WSI)
+
+if (length(data_files) == 0) {
+  stop("Po filtrování přes meta2 nezbyly žádné dnešní soubory.")
+}
+
+station_meta <- prepare_station_metadata(meta1_url)
+raw_data <- read_now_data(data_files)
 
 if (nrow(raw_data) == 0) {
-  stop("V dnešních souborech nebyla nalezena data pro ELEMENT = T, TMA, TMI.")
+  stop("V načtených souborech nejsou žádná data T/TMA/TMI.")
 }
 
-# 4) nejaktuálnější hodnota pro každou stanici a element
 latest_vals <- get_latest_per_station_element(raw_data)
-
-# 5) TOP 3 a BOTTOM 3
 result <- get_top_bottom3(latest_vals, station_meta)
 
-# 6) výstup
 readr::write_excel_csv(result, "MaxMinT.csv", na = "")
 
-message("Hotovo. Výstup uložen do MaxMinT.csv")
+message("Hotovo: MaxMinT.csv")
 print(result)
