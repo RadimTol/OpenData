@@ -16,6 +16,8 @@ library(tibble)
 base_data_url <- "https://opendata.chmi.cz/meteorology/climate/now/data/"
 base_meta_url <- "https://opendata.chmi.cz/meteorology/climate/now/metadata/"
 
+target_elements <- c("T", "TMA", "TMI", "Fmax", "SRA")
+
 # ------------------------------------------------------------
 # Pomocné funkce
 # ------------------------------------------------------------
@@ -104,7 +106,7 @@ prepare_station_metadata <- function(meta1_url) {
     dplyr::distinct(WSI, .keep_all = TRUE)
 }
 
-get_wsi_for_elements <- function(meta2_url, elements = c("T", "TMA", "TMI")) {
+get_wsi_for_elements <- function(meta2_url, elements = target_elements) {
   meta2 <- parse_chmi_json_values(meta2_url)
 
   needed <- c("WSI", "EG_EL_ABBREVIATION")
@@ -136,7 +138,7 @@ filter_files_by_wsi <- function(file_urls, wsi_vector) {
   file_urls[keep]
 }
 
-read_now_data <- function(file_urls) {
+read_now_data <- function(file_urls, elements = target_elements) {
   purrr::map_dfr(file_urls, function(u) {
     message("Načítám: ", u)
 
@@ -157,7 +159,7 @@ read_now_data <- function(file_urls) {
         DT = suppressWarnings(lubridate::ymd_hms(DT, tz = "UTC", quiet = TRUE)),
         VAL = suppressWarnings(as.numeric(VAL))
       ) |>
-      dplyr::filter(ELEMENT %in% c("T", "TMA", "TMI")) |>
+      dplyr::filter(ELEMENT %in% elements) |>
       dplyr::filter(!is.na(DT), !is.na(VAL))
   })
 }
@@ -211,7 +213,7 @@ if (length(data_files_all) == 0) {
 meta2_url <- get_latest_file_by_pattern(base_meta_url, "^meta2-\\d{8}\\.json$")
 meta1_url <- get_latest_file_by_pattern(base_meta_url, "^meta1-\\d{8}\\.json$")
 
-wsi_tbl <- get_wsi_for_elements(meta2_url, c("T", "TMA", "TMI"))
+wsi_tbl <- get_wsi_for_elements(meta2_url, target_elements)
 data_files <- filter_files_by_wsi(data_files_all, wsi_tbl$WSI)
 
 if (length(data_files) == 0) {
@@ -219,10 +221,10 @@ if (length(data_files) == 0) {
 }
 
 station_meta <- prepare_station_metadata(meta1_url)
-raw_data <- read_now_data(data_files)
+raw_data <- read_now_data(data_files, target_elements)
 
 if (nrow(raw_data) == 0) {
-  stop("V načtených souborech nejsou žádná data T/TMA/TMI.")
+  stop("V načtených souborech nejsou žádná data pro požadované prvky.")
 }
 
 latest_vals <- get_latest_per_station_element(raw_data)
