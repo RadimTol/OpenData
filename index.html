@@ -1,134 +1,131 @@
 <!DOCTYPE html>
-
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Opendata ČHMÚ</title>
 
-```
-<style>
-    * {
-        box-sizing: border-box;
-    }
-
-    body {
-        margin: 0;
-        font-family: Arial, Helvetica, sans-serif;
-        background: #f4f7fb;
-    }
-
-    .hero {
-        max-width: 1100px;
-        margin: 40px auto;
-        background: linear-gradient(135deg, #005aa3, #0b77c5);
-        color: white;
-        border-radius: 16px;
-        padding: 28px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    }
-
-    .hero-top {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-    }
-
-    .hero-logo {
-        padding: 0;
-    }
-
-    .hero-logo img {
-        max-height: 70px;
-        display: block;
-    }
-
-    .hero h1 {
-        margin: 0;
-        font-size: 2.2rem;
-    }
-
-    .button-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-    }
-
-    .menu-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 80px;
-        border-radius: 12px;
-        text-decoration: none;
-        font-weight: bold;
-        font-size: 1.1rem;
-        transition: 0.2s;
-    }
-
-    .menu-btn.active {
-        background: white;
-        color: #005aa3;
-    }
-
-    .menu-btn.active:hover {
-        transform: translateY(-3px);
-    }
-
-    .menu-btn.placeholder {
-        background: rgba(255,255,255,0.2);
-        color: rgba(255,255,255,0.8);
-    }
-
-    @media (max-width: 800px) {
-        .button-grid {
-            grid-template-columns: repeat(2, 1fr);
+    <style>
+        * {
+            box-sizing: border-box;
         }
-    }
 
-    @media (max-width: 500px) {
-        .button-grid {
-            grid-template-columns: 1fr;
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f7fb;
         }
 
         .hero {
-            margin: 20px;
+            max-width: 1100px;
+            margin: 40px auto;
+            background: linear-gradient(135deg, #005aa3, #0b77c5);
+            color: white;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
         }
-    }
-</style>
-```
 
+        .hero-top {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .hero-logo {
+            padding: 0;
+        }
+
+        .hero-logo img {
+            max-height: 70px;
+            width: auto;
+            display: block;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: 2.2rem;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .menu-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: 0.2s;
+            text-align: center;
+            padding: 12px;
+        }
+
+        .menu-btn.active {
+            background: white;
+            color: #005aa3;
+        }
+
+        .menu-btn.active:hover {
+            transform: translateY(-3px);
+        }
+
+        .menu-btn.placeholder {
+            background: rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.8);
+        }
+
+        @media (max-width: 800px) {
+            .button-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .button-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                margin: 20px;
+            }
+        }
+    </style>
 </head>
 
 <body>
 
 <div class="hero">
 
-```
-<div class="hero-top">
-    <div class="hero-logo">
-        <a href="https://www.chmi.cz" target="_blank" rel="noopener noreferrer">
-            <img src="chmu_logo.svg" alt="Logo ČHMÚ">
-        </a>
+    <div class="hero-top">
+        <div class="hero-logo">
+            <a href="https://www.chmi.cz" target="_blank" rel="noopener noreferrer">
+                <img src="chmu_logo.svg" alt="Logo ČHMÚ">
+            </a>
+        </div>
+
+        <h1>Opendata ČHMÚ</h1>
     </div>
 
-    <h1>Opendata ČHMÚ</h1>
-</div>
-
-<div class="button-grid">
-    <a class="menu-btn active" href="statopendata.html">Statická open data</a>
-    <a class="menu-btn active" href="extremyopendata.html">Extrémní teploty včera</a>
-    <div class="menu-btn placeholder">Připravuje se</div>
-    <div class="menu-btn placeholder">Připravuje se</div>
-    <div class="menu-btn placeholder">Připravuje se</div>
-    <div class="menu-btn placeholder">Připravuje se</div>
-    <div class="menu-btn placeholder">Připravuje se</div>
-    <div class="menu-btn placeholder">Připravuje se</div>
-    <div class="menu-btn placeholder">Připravuje se</div>
-</div>
-```
+    <div class="button-grid">
+        <a class="menu-btn active" href="statopendata.html">Statická open data</a>
+        <a class="menu-btn active" href="extremyopendata.html">Extrémní teploty včera</a>
+        <a class="menu-btn active" href="extremyopendatadnes.html">Extrémní teploty dnes</a>
+        <div class="menu-btn placeholder">Připravuje se</div>
+        <div class="menu-btn placeholder">Připravuje se</div>
+        <div class="menu-btn placeholder">Připravuje se</div>
+        <div class="menu-btn placeholder">Připravuje se</div>
+        <div class="menu-btn placeholder">Připravuje se</div>
+        <div class="menu-btn placeholder">Připravuje se</div>
+    </div>
 
 </div>
 
