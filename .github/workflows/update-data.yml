@@ -28,7 +28,7 @@ jobs:
 
       - name: Write last run timestamp
         run: |
-          date -u +"%Y-%m-%d %H:%M:%S UTC" > last_run.txt
+          date -u +"%Y-%m-%d %H:%M:%S UTC" > last_run_update_data.txt
 
       - name: Commit and push
         run: |
