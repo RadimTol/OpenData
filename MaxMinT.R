@@ -97,7 +97,7 @@ prepare_station_metadata <- function(meta1_url) {
   meta_raw |>
     dplyr::transmute(
       WSI       = as.character(WSI),
-      STATION   = as.character(GH_ID),
+      GH_ID     = as.character(GH_ID),
       NAME      = as.character(FULL_NAME),
       ELEVATION = suppressWarnings(as.numeric(ELEVATION))
     ) |>
@@ -173,8 +173,8 @@ get_latest_per_station_element <- function(df) {
 get_top_bottom3 <- function(df_latest, station_meta) {
   joined <- df_latest |>
     dplyr::left_join(
-      station_meta |> dplyr::select(STATION, NAME, ELEVATION),
-      by = "STATION"
+      station_meta |> dplyr::select(WSI, GH_ID, NAME, ELEVATION),
+      by = c("STATION" = "WSI")
     )
 
   highest <- joined |>
@@ -192,7 +192,7 @@ get_top_bottom3 <- function(df_latest, station_meta) {
     dplyr::ungroup()
 
   dplyr::bind_rows(highest, lowest) |>
-    dplyr::select(ELEMENT, EXTREME, RANK, STATION, NAME, ELEVATION, DT, VAL) |>
+    dplyr::select(ELEMENT, EXTREME, RANK, STATION, GH_ID, NAME, ELEVATION, DT, VAL) |>
     dplyr::arrange(ELEMENT, EXTREME, RANK)
 }
 
