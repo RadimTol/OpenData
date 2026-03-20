@@ -30,7 +30,7 @@
     }
 
     .page {
-      max-width: 1320px;
+      max-width: 1600px;
       margin: 0 auto;
       padding: 24px;
     }
@@ -306,7 +306,9 @@
     const elementInfo = {
       T: "Průměrná denní teplota",
       TMA: "Maximální denní teplota",
-      TMI: "Minimální denní teplota"
+      TMI: "Minimální denní teplota",
+      Fmax: "Maximální náraz větru",
+      SRA: "Denní úhrn srážek"
     };
 
     function formatDateCZ(dateStr) {
@@ -314,9 +316,13 @@
       return d.toLocaleDateString("cs-CZ");
     }
 
-    function formatValue(v) {
+    function formatValue(v, element) {
       const n = Number(v);
-      return Number.isFinite(n) ? n.toFixed(1).replace(".", ",") + " °C" : "—";
+      if (!Number.isFinite(n)) return "—";
+
+      if (element === "Fmax") return n.toFixed(1).replace(".", ",") + " m/s";
+      if (element === "SRA") return n.toFixed(1).replace(".", ",") + " mm";
+      return n.toFixed(1).replace(".", ",") + " °C";
     }
 
     function csvSplit(line) {
@@ -374,7 +380,7 @@
       return elev ? `(${elev} m n. m.)` : "";
     }
 
-    function renderList(rows, kind) {
+    function renderList(rows, kind, element) {
       if (!rows.length) {
         return '<div class="empty-box">Pro tuto kategorii nejsou k dispozici žádná data.</div>';
       }
@@ -388,7 +394,7 @@
                 <div class="station-name">${stationLabel(row)}</div>
                 <div class="station-meta">${elevationLabel(row)}</div>
               </div>
-              <div class="value ${kind}">${formatValue(row.VAL)}</div>
+              <div class="value ${kind}">${formatValue(row.VAL, element)}</div>
             </div>
           `).join("")}
         </div>
@@ -420,7 +426,7 @@
                 <h3>Nejvyšší hodnoty</h3>
                 <span class="badge hot">MAX</span>
               </div>
-              ${renderList(maxRows, "hot")}
+              ${renderList(maxRows, "hot", element)}
             </div>
 
             <div class="extreme-box cold">
@@ -428,7 +434,7 @@
                 <h3>Nejnižší hodnoty</h3>
                 <span class="badge cold">MIN</span>
               </div>
-              ${renderList(minRows, "cold")}
+              ${renderList(minRows, "cold", element)}
             </div>
           </div>
         </section>
@@ -457,7 +463,7 @@
         subtitleEl.textContent = `Přehled pro datum ${recordDate}`;
         statusEl.textContent = "OK";
 
-        const elements = ["T", "TMA", "TMI"];
+        const elements = ["T", "TMA", "TMI", "Fmax", "SRA"];
         contentEl.innerHTML = elements.map(el => renderPanel(el, rows)).join("");
       } catch (err) {
         statusEl.textContent = "Chyba";
