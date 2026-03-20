@@ -1,4 +1,7 @@
-Pracovní aplikace pro práci s OpenData ČHMÚ (opendata.chmi.cz).
+Pracovní aplikace pro práci s OpenData ČHMÚ (opendata.chmi.cz)
+
+Autor: Radim Tolasz (ještě pár let radim.tolasz@chmi.cz nbeo trvalejší radim@chmi.cz).
+Verze: březen 2026
 
 Aplikace obsahuje R skripty
 
