@@ -1,24 +1,21 @@
-
 name: Run MaxMinT script
 
 on:
   schedule:
-    - cron: "* * * 1 *"
+    - cron: "25 * * 10 *"
   workflow_dispatch:
 
 jobs:
-  run-r-script:
+  run:
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
+      - uses: r-lib/actions/setup-r@v2
 
       - name: Install R packages
         uses: r-lib/actions/setup-r-dependencies@v2
@@ -34,16 +31,14 @@ jobs:
             rvest
             xml2
             tibble
-        
-      - name: Run MaxMinT.R
-        run: |
-          Rscript MaxMinT.R
 
-      - name: Commit and push results
+      - name: Run script
+        run: Rscript MaxMinT.R
+
+      - name: Commit changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
           git add .
-          git diff --cached --quiet || git commit -m "Update data from MaxMinT.R"
+          git diff --cached --quiet || git commit -m "Update data"
           git push
