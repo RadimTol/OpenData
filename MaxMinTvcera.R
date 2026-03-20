@@ -39,7 +39,6 @@ parse_chmi_json_values <- function(url) {
   out
 }
 
-# JSON soubory pouze v rootu adresáře
 get_root_json_files <- function(index_url) {
   page <- rvest::read_html(index_url)
 
@@ -57,7 +56,6 @@ get_root_json_files <- function(index_url) {
   unique(paste0(index_url, files))
 }
 
-# Najde poslední soubor podle patternu meta1/meta2-YYYYMMDD.json
 get_latest_file_by_pattern <- function(index_url, pattern) {
   page <- rvest::read_html(index_url)
 
@@ -88,7 +86,7 @@ prepare_station_metadata <- function(meta1_url) {
   meta_raw |>
     dplyr::transmute(
       WSI       = as.character(WSI),
-      STATION   = as.character(GH_ID),
+      GH_ID     = as.character(GH_ID),
       NAME      = as.character(FULL_NAME),
       ELEVATION = suppressWarnings(as.numeric(ELEVATION))
     ) |>
@@ -174,8 +172,8 @@ read_daily_data <- function(file_urls) {
 get_top_bottom3_daily <- function(df_day, station_meta) {
   joined <- df_day |>
     dplyr::left_join(
-      station_meta |> dplyr::select(STATION, NAME, ELEVATION),
-      by = "STATION"
+      station_meta |> dplyr::select(WSI, GH_ID, NAME, ELEVATION),
+      by = c("STATION" = "WSI")
     )
 
   highest <- joined |>
@@ -193,7 +191,7 @@ get_top_bottom3_daily <- function(df_day, station_meta) {
     dplyr::ungroup()
 
   dplyr::bind_rows(highest, lowest) |>
-    dplyr::select(RECORD_DATE, ELEMENT, EXTREME, RANK, STATION, NAME, ELEVATION, VAL) |>
+    dplyr::select(RECORD_DATE, ELEMENT, EXTREME, RANK, STATION, GH_ID, NAME, ELEVATION, VAL) |>
     dplyr::arrange(ELEMENT, EXTREME, RANK)
 }
 
