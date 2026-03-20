@@ -173,8 +173,20 @@ function formatLocalTimestamp(utcText) {
   return date.toLocaleString("cs-CZ", { timeZone: "Europe/Prague" });
 }
 
-function hourLabel(h) {
-  return String(h).padStart(2, "0") + ":00";
+function hourLabelLocal(day, h) {
+  const dt = new Date(Date.UTC(
+    Number(day.slice(0, 4)),
+    Number(day.slice(5, 7)) - 1,
+    Number(day.slice(8, 10)),
+    h, 0, 0
+  ));
+
+  return dt.toLocaleTimeString("cs-CZ", {
+    timeZone: "Europe/Prague",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
 }
 
 function pieColors(values) {
@@ -211,7 +223,7 @@ async function loadData() {
     const [data, nowHourly, lastRun] = await Promise.all([
       fetchJson("data.json"),
       fetchJson("now_hourly.json"),
-      fetchText("last_run_update_data.txt").catch(() => null)
+      fetchText("last_run.txt").catch(() => null)
     ]);
 
     if (lastRun) {
@@ -274,7 +286,7 @@ async function loadData() {
       new Chart(document.getElementById("p" + i), {
         type: "pie",
         data: {
-          labels: Array.from({ length: 24 }, (_, h) => hourLabel(h)),
+          labels: Array.from({ length: 24 }, (_, h) => hourLabelLocal(day, h)),
           datasets: [{
             data: values,
             backgroundColor: pieColors(values)
