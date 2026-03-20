@@ -46,5 +46,7 @@ jobs:
           git config user.email "github-actions@github.com"
 
           git add .
-          git diff --cached --quiet || git commit -m "Update data from MaxMinTvcera.R"
+          git diff --cached --quiet || git commit -m "Update data from MaxMinT.R"
+
+          git pull --rebase
           git push
