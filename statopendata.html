@@ -211,7 +211,7 @@ async function loadData() {
     const [data, nowHourly, lastRun] = await Promise.all([
       fetchJson("data.json"),
       fetchJson("now_hourly.json"),
-      fetchText("last_run.txt").catch(() => null)
+      fetchText("last_run_update_data.txt").catch(() => null)
     ]);
 
     if (lastRun) {
