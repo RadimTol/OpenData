@@ -2,7 +2,7 @@ name: Run MaxMinT script
 
 on:
   schedule:
-    - cron: "25 * * 10 *"
+    - cron: "25 * * * *"
   workflow_dispatch:
 
 jobs:
