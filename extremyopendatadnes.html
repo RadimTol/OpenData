@@ -309,9 +309,22 @@
       TMI: "Minimální denní teplota"
     };
 
-    function formatDateCZ(dateStr) {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString("cs-CZ");
+    function formatDateTimeCZ(dateStr) {
+      if (!dateStr) return "není k dispozici";
+
+      const normalized = dateStr.replace(/\//g, "-").replace(" ", "T");
+      const d = new Date(normalized);
+
+      if (isNaN(d.getTime())) return dateStr;
+
+      return d.toLocaleString("cs-CZ", {
+        timeZone: "Europe/Prague",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
     }
 
     function formatValue(v) {
@@ -453,8 +466,13 @@
           throw new Error("CSV je prázdné.");
         }
 
-        const recordDate = rows[0].RECORD_DATE ? formatDateCZ(rows[0].RECORD_DATE) : "není k dispozici";
-        subtitleEl.textContent = `Přehled pro datum ${recordDate}`;
+        const latestDt = rows
+          .map(r => r.DT || "")
+          .filter(Boolean)
+          .sort()
+          .pop();
+
+        subtitleEl.textContent = `Data k: ${latestDt ? formatDateTimeCZ(latestDt) : "není k dispozici"}`;
         statusEl.textContent = "OK";
 
         const elements = ["T", "TMA", "TMI"];
