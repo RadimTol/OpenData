@@ -1,34 +1,30 @@
 name: Run histrecent
 
 on:
-schedule:
-- cron: "10 6,18 * * *"
-workflow_dispatch:
+  schedule:
+    - cron: "10 6,18 * * *"
+  workflow_dispatch:
 
 jobs:
-run-histrecent:
-runs-on: ubuntu-latest
+  run-histrecent:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Checkout repository
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  - name: Set up R
-    uses: r-lib/actions/setup-r@v2
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
 
-  - name: Install packages
-    run: |
-      Rscript -e "install.packages(
-        c('jsonlite','dplyr','purrr','stringr','readr','lubridate','rvest','xml2','tibble'),
-        repos='https://cloud.r-project.org'
-      )"
+      - name: Install packages
+        run: |
+          Rscript -e "install.packages(c('jsonlite','dplyr','purrr','stringr','readr','lubridate','rvest','xml2','tibble'), repos='https://cloud.r-project.org')"
 
-  - name: Run script
-    run: Rscript histrecent.R
+      - name: Run script
+        run: Rscript histrecent.R
 
-  - name: Upload artifact
-    uses: actions/upload-artifact@v4
-    with:
-      name: histrecent
-      path: histrecent.csv
-```
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: histrecent
+          path: histrecent.csv
