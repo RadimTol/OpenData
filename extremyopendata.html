@@ -319,19 +319,35 @@
       return s;
     }
 
-    function formatDateCZ(dateStr) {
+    function parseDateParts(dateStr) {
       const normalized = normalizeDateString(dateStr);
-      const d = new Date(normalized + "T00:00:00");
-      if (isNaN(d.getTime())) return dateStr || "není k dispozici";
+      const m = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return null;
+      return {
+        y: Number(m[1]),
+        m: Number(m[2]),
+        d: Number(m[3])
+      };
+    }
+
+    function formatDateCZ(dateStr) {
+      const parts = parseDateParts(dateStr);
+      if (!parts) return dateStr || "není k dispozici";
+      const d = new Date(parts.y, parts.m - 1, parts.d);
       return d.toLocaleDateString("cs-CZ");
     }
 
     function shiftDate(dateStr, days) {
-      const normalized = normalizeDateString(dateStr);
-      const d = new Date(normalized + "T00:00:00");
-      if (isNaN(d.getTime())) return normalized;
+      const parts = parseDateParts(dateStr);
+      if (!parts) return normalizeDateString(dateStr);
+
+      const d = new Date(parts.y, parts.m - 1, parts.d);
       d.setDate(d.getDate() + days);
-      return d.toISOString().slice(0, 10);
+
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
     }
 
     function formatValue(v, element) {
@@ -428,11 +444,10 @@
       const title = elementInfo[element] || element;
       const effectiveDate = getEffectiveDateForElement(element, baseDate);
 
-      let filtered = rows.filter(r => r.ELEMENT === element);
-
-      if (effectiveDate) {
-        filtered = filtered.filter(r => normalizeDateString(r.RECORD_DATE) === effectiveDate);
-      }
+      const filtered = rows.filter(r =>
+        r.ELEMENT === element &&
+        normalizeDateString(r.RECORD_DATE) === effectiveDate
+      );
 
       const maxRows = filtered
         .filter(r => r.EXTREME === "MAX")
