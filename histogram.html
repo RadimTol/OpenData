@@ -11,12 +11,22 @@
       --chmi-blue: #005aa3;
       --chmi-blue-light: #0b77c5;
       --chmi-bg: #f4f7fb;
+      --card-bg: #ffffff;
+      --text: #1e2a36;
+      --muted: #5e6b78;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
       background: var(--chmi-bg);
+      color: var(--text);
     }
 
     .page {
@@ -34,13 +44,25 @@
 
     .nav-btn {
       background: var(--chmi-blue);
-      color: white;
+      color: #fff;
       padding: 10px 16px;
       border-radius: 10px;
       text-decoration: none;
       font-weight: bold;
       border: none;
       cursor: pointer;
+      font-family: inherit;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.2;
+      transition: background 0.2s ease, transform 0.15s ease;
+    }
+
+    .nav-btn:hover {
+      background: var(--chmi-blue-light);
+      transform: translateY(-1px);
     }
 
     .hero {
@@ -49,6 +71,13 @@
       border-radius: 20px;
       padding: 28px;
       margin-bottom: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 2rem;
+      line-height: 1.2;
     }
 
     .group {
@@ -61,6 +90,13 @@
       border-radius: 14px;
       padding: 16px;
       margin-bottom: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+
+    .group-header h2 {
+      margin: 0;
+      font-size: 1.35rem;
+      color: var(--chmi-blue);
     }
 
     .grid {
@@ -72,11 +108,59 @@
     .panel {
       background: white;
       border-radius: 12px;
-      padding: 10px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 12px 14px;
+      background: #eaf3fb;
+      border-bottom: 1px solid #dbeaf8;
+    }
+
+    .panel-head h3 {
+      margin: 0 0 4px 0;
+      color: var(--chmi-blue);
+      font-size: 1.05rem;
+    }
+
+    .panel-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .panel-body {
+      padding: 12px;
     }
 
     .chart-wrap {
       height: 240px;
+      position: relative;
+    }
+
+    .empty-box {
+      background: #fff;
+      border: 1px dashed #c5d7e8;
+      border-radius: 14px;
+      padding: 16px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1100px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .page {
+        padding: 16px;
+      }
+
+      .hero h1 {
+        font-size: 1.6rem;
+      }
     }
   </style>
 </head>
@@ -84,120 +168,320 @@
 <body>
 <div class="page">
 
-<div class="top-bar">
-  <a href="index.html" class="nav-btn">← Back</a>
-  <button onclick="location.reload()" class="nav-btn">🔄 Refresh</button>
-</div>
-
-<div class="hero">
-  <h1 id="mainTitle">Histogramy hodnot</h1>
-</div>
-
-<section class="group">
-  <div class="group-header">
-    <h2 id="titleNow">Histogram hodnot dnes</h2>
+  <div class="top-bar">
+    <a href="index.html" class="nav-btn">← Back</a>
+    <button onclick="forceReload()" class="nav-btn" type="button">🔄 Refresh</button>
   </div>
-  <div class="grid" id="gridNow"></div>
-</section>
 
-<section class="group">
-  <div class="group-header">
-    <h2 id="titleRecent">Histogram hodnot včera</h2>
+  <div class="hero">
+    <h1 id="mainTitle">Histogramy hodnot</h1>
   </div>
-  <div class="grid" id="gridRecent"></div>
-</section>
+
+  <section class="group">
+    <div class="group-header">
+      <h2 id="titleNow">Histogram hodnot dnes</h2>
+    </div>
+    <div class="grid" id="gridNow"></div>
+  </section>
+
+  <section class="group">
+    <div class="group-header">
+      <h2 id="titleRecent">Histogram hodnot včera</h2>
+    </div>
+    <div class="grid" id="gridRecent"></div>
+  </section>
 
 </div>
 
 <script>
+const elementInfo = {
+  T: "Teplota",
+  Fmax: "Maximální náraz větru",
+  SRA: "Srážky",
+  SRA1H: "Srážky za 1 hodinu"
+};
+
+const elementUnits = {
+  T: "°C",
+  Fmax: "m/s",
+  SRA: "mm",
+  SRA1H: "mm"
+};
+
+const chartRefs = [];
+
+function forceReload() {
+  const url = new URL(window.location.href);
+  url.searchParams.set("_t", Date.now());
+  window.location.href = url.toString();
+}
+
+function round1(x) {
+  return Math.round(x * 10) / 10;
+}
+
+function formatNumber1(x) {
+  return round1(x).toFixed(1).replace(".", ",");
+}
+
+function csvSplit(line) {
+  const out = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === "," && !inQuotes) {
+      out.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+
+  out.push(current);
+  return out;
+}
+
 function parseCsv(text) {
-  const lines = text.trim().split(/\r?\n/);
-  const headers = lines[0].replace(/"/g,"").split(",");
+  const clean = text.replace(/^\uFEFF/, "").trim();
+  const lines = clean.split(/\r?\n/).filter(Boolean);
 
-  return lines.slice(1).map(line=>{
-    const cols = line.replace(/"/g,"").split(",");
-    let obj = {};
-    headers.forEach((h,i)=>obj[h]=cols[i]);
-    return obj;
+  if (!lines.length) return [];
+
+  const headers = csvSplit(lines[0]).map(h => h.replace(/^"|"$/g, "").trim());
+
+  return lines.slice(1).map(line => {
+    const cols = csvSplit(line);
+    const row = {};
+    headers.forEach((h, i) => {
+      row[h] = (cols[i] ?? "").replace(/^"|"$/g, "").trim();
+    });
+    return row;
   });
 }
 
-function parseDate(s){
-  if(!s) return null;
-  return new Date(s.replace(" ","T"));
+async function fetchCsv(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Nelze načíst ${url} (${response.status})`);
+  }
+  const text = await response.text();
+  return parseCsv(text);
 }
 
-function fmt(dt){
-  if(!dt) return "";
-  return dt.toLocaleString("cs-CZ");
+function parseDate(s) {
+  if (!s) return null;
+
+  const clean = String(s)
+    .replace(" CET", "")
+    .replace(" CEST", "")
+    .trim()
+    .replace(" ", "T");
+
+  const d = new Date(clean);
+  return isNaN(d.getTime()) ? null : d;
 }
 
-function latest(arr){
-  return arr.sort((a,b)=>parseDate(a)-parseDate(b)).pop();
+function fmt(dt) {
+  if (!dt) return "není k dispozici";
+
+  return dt.toLocaleString("cs-CZ", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
-function build(rows, el){
-  return rows.filter(r=>r.element===el)
-    .map(r=>({
-      l:+r.bin_left,
-      r:+r.bin_right,
-      c:+r.count
+function latest(values) {
+  const valid = values.filter(Boolean);
+
+  if (!valid.length) return "";
+
+  valid.sort((a, b) => {
+    const da = parseDate(a);
+    const db = parseDate(b);
+
+    if (!da && !db) return 0;
+    if (!da) return -1;
+    if (!db) return 1;
+
+    return da - db;
+  });
+
+  return valid[valid.length - 1];
+}
+
+function clearCharts() {
+  while (chartRefs.length) {
+    const c = chartRefs.pop();
+    c.destroy();
+  }
+}
+
+function build(rows, element) {
+  return rows
+    .filter(r => (r.element || "") === element)
+    .map(r => ({
+      l: Number(String(r.bin_left).replace(",", ".")),
+      r: Number(String(r.bin_right).replace(",", ".")),
+      c: Number(String(r.count).replace(",", "."))
     }))
-    .sort((a,b)=>a.l-b.l);
+    .filter(d =>
+      Number.isFinite(d.l) &&
+      Number.isFinite(d.r) &&
+      Number.isFinite(d.c)
+    )
+    .sort((a, b) => a.l - b.l);
 }
 
-function chart(id,data){
-  new Chart(document.getElementById(id),{
-    type:"bar",
-    data:{
-      labels:data.map(d=>`${d.l}-${d.r}`),
-      datasets:[{data:data.map(d=>d.c)}]
+function createPanel(grid, element, canvasId) {
+  const div = document.createElement("div");
+  div.className = "panel";
+  div.innerHTML = `
+    <div class="panel-head">
+      <h3>${element}</h3>
+      <p>${elementInfo[element] || element}</p>
+    </div>
+    <div class="panel-body">
+      <div class="chart-wrap">
+        <canvas id="${canvasId}"></canvas>
+      </div>
+    </div>
+  `;
+  grid.appendChild(div);
+}
+
+function createEmptyPanel(grid, element, message) {
+  const div = document.createElement("div");
+  div.className = "panel";
+  div.innerHTML = `
+    <div class="panel-head">
+      <h3>${element}</h3>
+      <p>${elementInfo[element] || element}</p>
+    </div>
+    <div class="panel-body">
+      <div class="empty-box">${message}</div>
+    </div>
+  `;
+  grid.appendChild(div);
+}
+
+function chart(id, element, data) {
+  const instance = new Chart(document.getElementById(id), {
+    type: "bar",
+    data: {
+      labels: data.map(d => `${formatNumber1(d.l)} – ${formatNumber1(d.r)}`),
+      datasets: [{
+        data: data.map(d => d.c)
+      }]
     },
-    options:{plugins:{legend:{display:false}}}
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => `Interval: ${items[0].label} ${elementUnits[element] || ""}`.trim(),
+            label: ctx => `Počet: ${ctx.raw}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: elementUnits[element]
+              ? `Interval hodnot [${elementUnits[element]}]`
+              : "Interval hodnot"
+          },
+          ticks: {
+            autoSkip: true,
+            maxRotation: 0
+          }
+        },
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Počet"
+          },
+          ticks: {
+            callback: function(value) {
+              return formatNumber1(Number(value));
+            }
+          }
+        }
+      }
+    }
+  });
+
+  chartRefs.push(instance);
+}
+
+function render(rows, gridId, elements, prefix) {
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = "";
+
+  elements.forEach(el => {
+    const data = build(rows, el);
+
+    if (!data.length) {
+      createEmptyPanel(grid, el, "Pro tento prvek nejsou k dispozici data histogramu.");
+      return;
+    }
+
+    const canvasId = `${prefix}_${el}`;
+    createPanel(grid, el, canvasId);
+    chart(canvasId, el, data);
   });
 }
 
-function render(rows, gridId, elements){
-  const grid=document.getElementById(gridId);
-  grid.innerHTML="";
+async function load() {
+  try {
+    clearCharts();
 
-  elements.forEach(el=>{
-    const d=build(rows,el);
+    const [now, rec] = await Promise.all([
+      fetchCsv("histnow.csv"),
+      fetchCsv("histrecent.csv")
+    ]);
 
-    const div=document.createElement("div");
-    div.className="panel";
-    div.innerHTML=`<canvas id="${gridId}_${el}"></canvas>`;
-    grid.appendChild(div);
+    const mainTime = latest([
+      ...now.map(r => r.run_datetime_local),
+      ...rec.map(r => r.run_datetime_local)
+    ]);
 
-    if(d.length) chart(`${gridId}_${el}`,d);
-  });
-}
+    document.getElementById("mainTitle").textContent =
+      `Histogramy hodnot (připraveno: ${fmt(parseDate(mainTime))})`;
 
-async function load(){
-  const now=await fetch("histnow.csv").then(r=>r.text()).then(parseCsv);
-  const rec=await fetch("histrecent.csv").then(r=>r.text()).then(parseCsv);
+    const nowTime = latest(now.map(r => r.value_datetime_utc));
+    document.getElementById("titleNow").textContent =
+      `Histogram hodnot dnes (${fmt(parseDate(nowTime))})`;
 
-  // hlavní čas
-  const mainTime = latest([
-    ...now.map(r=>r.run_datetime_local),
-    ...rec.map(r=>r.run_datetime_local)
-  ]);
+    const recTime = latest(rec.map(r => r.value_date));
+    document.getElementById("titleRecent").textContent =
+      `Histogram hodnot včera (${recTime || "není k dispozici"})`;
 
-  document.getElementById("mainTitle").textContent =
-    `Histogramy hodnot (připraveno: ${fmt(parseDate(mainTime))})`;
-
-  // dnes
-  const nowTime = latest(now.map(r=>r.value_datetime_utc));
-  document.getElementById("titleNow").textContent =
-    `Histogram hodnot dnes (${fmt(parseDate(nowTime))})`;
-
-  // včera
-  const recTime = latest(rec.map(r=>r.value_date));
-  document.getElementById("titleRecent").textContent =
-    `Histogram hodnot včera (${recTime})`;
-
-  render(now,"gridNow",["T","Fmax","SRA1H"]);
-  render(rec,"gridRecent",["T","Fmax","SRA"]);
+    render(now, "gridNow", ["T", "Fmax", "SRA1H"], "now");
+    render(rec, "gridRecent", ["T", "Fmax", "SRA"], "recent");
+  } catch (err) {
+    document.getElementById("gridNow").innerHTML =
+      `<div class="empty-box">Nepodařilo se načíst nebo zpracovat histnow.csv.<br>Detail: ${err.message}</div>`;
+    document.getElementById("gridRecent").innerHTML =
+      `<div class="empty-box">Nepodařilo se načíst nebo zpracovat histrecent.csv.<br>Detail: ${err.message}</div>`;
+    console.error(err);
+  }
 }
 
 load();
