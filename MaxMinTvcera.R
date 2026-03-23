@@ -17,6 +17,7 @@ base_data_url <- "https://opendata.chmi.cz/meteorology/climate/recent/data/daily
 base_meta_url <- "https://opendata.chmi.cz/meteorology/climate/recent/metadata/"
 
 target_elements <- c("T", "TMA", "TMI", "Fmax", "SRA")
+sra_lag_days <- 1
 
 # ------------------------------------------------------------
 # Pomocné funkce
@@ -145,12 +146,16 @@ read_daily_data <- function(file_urls, elements = target_elements) {
 
     df <- parse_chmi_json_values(u)
 
-    needed <- c("STATION", "ELEMENT", "VTYPE", "VAL")
+    needed <- c("STATION", "ELEMENT", "VAL")
     missing_cols <- setdiff(needed, names(df))
     if (length(missing_cols) > 0) {
       stop("V datovém souboru chybí očekávané sloupce: ",
            paste(missing_cols, collapse = ", "),
            " | soubor: ", u)
+    }
+
+    if (!("VTYPE" %in% names(df))) {
+      df$VTYPE <- NA_character_
     }
 
     date_col <- intersect(c("DT", "DATE"), names(df))
@@ -171,6 +176,29 @@ read_daily_data <- function(file_urls, elements = target_elements) {
       dplyr::filter(ELEMENT != "T" | VTYPE == "AVG") |>
       dplyr::filter(!is.na(RECORD_DATE), !is.na(VAL))
   })
+}
+
+get_effective_day_data <- function(raw_data, sra_lag_days = 1) {
+  non_sra_data <- raw_data |>
+    dplyr::filter(ELEMENT != "SRA")
+
+  if (nrow(non_sra_data) == 0) {
+    stop("V datech nejsou žádné prvky jiné než SRA, nelze určit referenční poslední den.")
+  }
+
+  ref_day <- max(non_sra_data$RECORD_DATE, na.rm = TRUE)
+  sra_day <- ref_day - sra_lag_days
+
+  message("Referenční poslední den pro T/TMA/TMI/Fmax: ", format(ref_day, "%Y-%m-%d"))
+  message("Použitý den pro SRA: ", format(sra_day, "%Y-%m-%d"))
+
+  main_part <- raw_data |>
+    dplyr::filter(ELEMENT != "SRA", RECORD_DATE == ref_day)
+
+  sra_part <- raw_data |>
+    dplyr::filter(ELEMENT == "SRA", RECORD_DATE == sra_day)
+
+  dplyr::bind_rows(main_part, sra_part)
 }
 
 get_top_bottom3_daily <- function(df_day, station_meta) {
@@ -224,16 +252,17 @@ if (nrow(raw_data) == 0) {
   stop("V načtených daily souborech nejsou žádná data pro požadované prvky.")
 }
 
-last_day <- max(raw_data$RECORD_DATE, na.rm = TRUE)
-message("Poslední dostupný den: ", format(last_day, "%Y-%m-%d"))
+effective_day_data <- get_effective_day_data(raw_data, sra_lag_days = sra_lag_days)
 
-meta1_url <- paste0(base_meta_url, "meta1-", format(last_day, "%Y%m%d"), ".json")
+if (nrow(effective_day_data) == 0) {
+  stop("Po výběru referenčního dne a SRA dne nezůstala žádná data.")
+}
+
+meta_day <- max(effective_day_data$RECORD_DATE, na.rm = TRUE)
+meta1_url <- paste0(base_meta_url, "meta1-", format(meta_day, "%Y%m%d"), ".json")
 station_meta <- prepare_station_metadata(meta1_url)
 
-last_day_data <- raw_data |>
-  dplyr::filter(RECORD_DATE == last_day)
-
-result <- get_top_bottom3_daily(last_day_data, station_meta)
+result <- get_top_bottom3_daily(effective_day_data, station_meta)
 
 readr::write_excel_csv(result, "MaxMinT_daily_last_day.csv", na = "")
 
