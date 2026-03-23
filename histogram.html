@@ -18,6 +18,10 @@
       --radius: 16px;
     }
 
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
@@ -47,6 +51,18 @@
       font-weight: bold;
       border: none;
       cursor: pointer;
+      font-family: inherit;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.2;
+      transition: background 0.2s ease, transform 0.15s ease;
+    }
+
+    .nav-btn:hover {
+      background: var(--chmi-blue-light);
+      transform: translateY(-1px);
     }
 
     .hero {
@@ -56,6 +72,12 @@
       padding: 28px;
       box-shadow: var(--shadow);
       margin-bottom: 22px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 2rem;
+      line-height: 1.2;
     }
 
     .group {
@@ -68,6 +90,13 @@
       border-radius: 14px;
       padding: 16px;
       margin-bottom: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+
+    .group-header h2 {
+      margin: 0;
+      font-size: 1.35rem;
+      color: var(--chmi-blue);
     }
 
     .grid {
@@ -80,12 +109,25 @@
       background: white;
       border-radius: var(--radius);
       box-shadow: var(--shadow);
+      overflow: hidden;
     }
 
     .panel-head {
-      padding: 12px;
+      padding: 12px 14px;
       background: #eaf3fb;
       border-bottom: 1px solid #dbeaf8;
+    }
+
+    .panel-head h3 {
+      margin: 0 0 4px 0;
+      color: var(--chmi-blue);
+      font-size: 1.05rem;
+    }
+
+    .panel-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
     }
 
     .panel-body {
@@ -94,11 +136,30 @@
 
     .chart-wrap {
       height: 240px;
+      position: relative;
     }
 
-    @media (max-width: 900px) {
+    .empty-box {
+      background: #fff;
+      border: 1px dashed #c5d7e8;
+      border-radius: 14px;
+      padding: 16px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1100px) {
       .grid {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .page {
+        padding: 16px;
+      }
+
+      .hero h1 {
+        font-size: 1.6rem;
       }
     }
   </style>
@@ -109,14 +170,13 @@
 
     <div class="top-bar">
       <a href="index.html" class="nav-btn">← Back</a>
-      <button onclick="location.reload()" class="nav-btn">🔄 Refresh</button>
+      <button onclick="forceReload()" class="nav-btn" type="button">🔄 Refresh</button>
     </div>
 
     <div class="hero">
       <h1>Histogramy hodnot</h1>
     </div>
 
-    <!-- DNES -->
     <section class="group">
       <div class="group-header">
         <h2 id="titleNow">Histogram hodnot dnes</h2>
@@ -124,7 +184,6 @@
       <div class="grid" id="gridNow"></div>
     </section>
 
-    <!-- VČERA -->
     <section class="group">
       <div class="group-header">
         <h2 id="titleRecent">Histogram hodnot včera</h2>
@@ -139,7 +198,7 @@ const elementInfo = {
   T: "Teplota",
   Fmax: "Maximální náraz větru",
   SRA: "Srážky",
-  SRA1H: "Srážky 1h"
+  SRA1H: "Srážky za 1 hodinu"
 };
 
 const elementUnits = {
@@ -149,101 +208,304 @@ const elementUnits = {
   SRA1H: "mm"
 };
 
+const chartRefs = [];
+
+function forceReload() {
+  const url = new URL(window.location.href);
+  url.searchParams.set("_t", Date.now());
+  window.location.href = url.toString();
+}
+
+function csvSplit(line) {
+  const out = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === "," && !inQuotes) {
+      out.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+
+  out.push(current);
+  return out;
+}
+
 function parseCsv(text) {
-  const lines = text.trim().split(/\r?\n/);
-  const headers = lines[0].split(",");
+  const clean = text.replace(/^\uFEFF/, "").trim();
+  const lines = clean.split(/\r?\n/).filter(Boolean);
+
+  if (!lines.length) return [];
+
+  const headers = csvSplit(lines[0]).map(h => h.replace(/^"|"$/g, "").trim());
+
   return lines.slice(1).map(line => {
-    const cols = line.split(",");
-    let obj = {};
-    headers.forEach((h,i)=> obj[h]=cols[i]);
-    return obj;
+    const cols = csvSplit(line);
+    const row = {};
+    headers.forEach((h, i) => {
+      row[h] = (cols[i] ?? "").replace(/^"|"$/g, "").trim();
+    });
+    return row;
   });
 }
 
-function latestTime(rows){
-  const arr = rows.map(r=>r.run_datetime_local).filter(Boolean);
-  arr.sort();
-  return arr[arr.length-1];
+async function fetchCsv(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Nelze načíst ${url} (${response.status})`);
+  }
+  const text = await response.text();
+  return parseCsv(text);
 }
 
-function formatDate(s){
-  const d = new Date(s.replace(" ","T"));
-  return d.toLocaleString("cs-CZ",{day:"numeric",month:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"});
+function parseLocalDateTime(value) {
+  if (!value) return null;
+
+  const normalized = String(value)
+    .replace(" CET", "")
+    .replace(" CEST", "")
+    .trim()
+    .replace(" ", "T");
+
+  const d = new Date(normalized);
+  return isNaN(d.getTime()) ? null : d;
 }
 
-function buildData(rows, element){
-  return rows
-    .filter(r=>r.element===element)
-    .map(r=>({
-      left: Number(r.bin_left),
-      right: Number(r.bin_right),
-      count: Number(r.count)
+function formatRunDateTime(value) {
+  const d = parseLocalDateTime(value);
+  if (!d) return "není k dispozici";
+
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const year = d.getFullYear();
+  const hour = String(d.getHours()).padStart(2, "0");
+  const minute = String(d.getMinutes()).padStart(2, "0");
+
+  return `${day}.${month}.${year} ${hour}:${minute}`;
+}
+
+function latestRunDateTime(rows) {
+  const values = rows
+    .map(r => r.run_datetime_local || "")
+    .filter(Boolean);
+
+  if (!values.length) return "";
+
+  values.sort((a, b) => {
+    const da = parseLocalDateTime(a);
+    const db = parseLocalDateTime(b);
+    if (!da && !db) return 0;
+    if (!da) return -1;
+    if (!db) return 1;
+    return da - db;
+  });
+
+  return values[values.length - 1];
+}
+
+function clearCharts() {
+  while (chartRefs.length) {
+    const c = chartRefs.pop();
+    c.destroy();
+  }
+}
+
+function createPanel(container, element, suffix) {
+  const panel = document.createElement("section");
+  panel.className = "panel";
+
+  panel.innerHTML = `
+    <div class="panel-head">
+      <h3>${element}</h3>
+      <p>${elementInfo[element] || element}</p>
+    </div>
+    <div class="panel-body">
+      <div class="chart-wrap">
+        <canvas id="${suffix}_${element}"></canvas>
+      </div>
+    </div>
+  `;
+
+  container.appendChild(panel);
+  return `${suffix}_${element}`;
+}
+
+function createEmptyPanel(container, element, message) {
+  const panel = document.createElement("section");
+  panel.className = "panel";
+
+  panel.innerHTML = `
+    <div class="panel-head">
+      <h3>${element}</h3>
+      <p>${elementInfo[element] || element}</p>
+    </div>
+    <div class="panel-body">
+      <div class="empty-box">${message}</div>
+    </div>
+  `;
+
+  container.appendChild(panel);
+}
+
+function buildHistogramData(rows, element) {
+  const filtered = rows
+    .filter(r => (r.element || "") === element)
+    .map(r => ({
+      left: Number(String(r.bin_left).replace(",", ".")),
+      right: Number(String(r.bin_right).replace(",", ".")),
+      count: Number(String(r.count).replace(",", "."))
     }))
-    .sort((a,b)=>a.left-b.left);
+    .filter(r =>
+      Number.isFinite(r.left) &&
+      Number.isFinite(r.right) &&
+      Number.isFinite(r.count)
+    )
+    .sort((a, b) => a.left - b.left);
+
+  if (!filtered.length) return null;
+
+  return {
+    labels: filtered.map(r =>
+      `${formatBin(r.left)} – ${formatBin(r.right)}`
+    ),
+    counts: filtered.map(r => r.count)
+  };
 }
 
-function drawChart(id, element, data){
-  new Chart(document.getElementById(id),{
-    type:"bar",
-    data:{
-      labels:data.map(d=>`${d.left}-${d.right}`),
-      datasets:[{data:data.map(d=>d.count)}]
+function formatBin(value) {
+  return Number(value.toFixed(2)).toString().replace(".", ",");
+}
+
+function renderHistogram(canvasId, element, histData) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  const chart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: histData.labels,
+      datasets: [{
+        label: "Počet",
+        data: histData.counts
+      }]
     },
-    options:{
-      responsive:true,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{title:{display:true,text:elementUnits[element]}},
-        y:{beginAtZero:true}
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            title: function(items) {
+              return `Interval: ${items[0].label} ${elementUnits[element] || ""}`.trim();
+            },
+            label: function(context) {
+              return `Počet: ${context.raw}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: elementUnits[element]
+              ? `Interval hodnot [${elementUnits[element]}]`
+              : "Interval hodnot"
+          },
+          ticks: {
+            autoSkip: true,
+            maxRotation: 0
+          }
+        },
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Počet"
+          }
+        }
       }
     }
   });
+
+  chartRefs.push(chart);
 }
 
-function renderGroup(rows, gridId, titleId, title, elements){
+function renderGroup(rows, gridId, titleId, baseTitle, elements, suffix) {
   const grid = document.getElementById(gridId);
+  const title = document.getElementById(titleId);
+
   grid.innerHTML = "";
 
-  const dt = latestTime(rows);
-  if(dt){
-    document.getElementById(titleId).textContent =
-      `${title} (data ${formatDate(dt)})`;
+  const latest = latestRunDateTime(rows);
+  if (latest) {
+    title.textContent = `${baseTitle} (data ${formatRunDateTime(latest)})`;
+  } else {
+    title.textContent = baseTitle;
   }
 
-  elements.forEach(el=>{
-    const data = buildData(rows, el);
+  elements.forEach(element => {
+    const histData = buildHistogramData(rows, element);
 
-    const panel = document.createElement("div");
-    panel.className = "panel";
-
-    panel.innerHTML = `
-      <div class="panel-head"><b>${el}</b></div>
-      <div class="panel-body">
-        <div class="chart-wrap">
-          <canvas id="${gridId}_${el}"></canvas>
-        </div>
-      </div>
-    `;
-
-    grid.appendChild(panel);
-
-    if(data.length){
-      drawChart(`${gridId}_${el}`, el, data);
+    if (!histData) {
+      createEmptyPanel(grid, element, "Pro tento prvek nejsou k dispozici data histogramu.");
+      return;
     }
+
+    const canvasId = createPanel(grid, element, suffix);
+    renderHistogram(canvasId, element, histData);
   });
 }
 
-async function load(){
-  const [now, recent] = await Promise.all([
-    fetch("histnow.csv").then(r=>r.text()).then(parseCsv),
-    fetch("histrecent.csv").then(r=>r.text()).then(parseCsv)
-  ]);
+async function load() {
+  try {
+    clearCharts();
 
-  renderGroup(now,"gridNow","titleNow","Histogram hodnot dnes",
-    ["T","Fmax","SRA1H"]);
+    const [nowRows, recentRows] = await Promise.all([
+      fetchCsv("histnow.csv"),
+      fetchCsv("histrecent.csv")
+    ]);
 
-  renderGroup(recent,"gridRecent","titleRecent","Histogram hodnot včera",
-    ["T","Fmax","SRA"]);
+    renderGroup(
+      nowRows,
+      "gridNow",
+      "titleNow",
+      "Histogram hodnot dnes",
+      ["T", "Fmax", "SRA1H"],
+      "now"
+    );
+
+    renderGroup(
+      recentRows,
+      "gridRecent",
+      "titleRecent",
+      "Histogram hodnot včera",
+      ["T", "Fmax", "SRA"],
+      "recent"
+    );
+  } catch (err) {
+    document.getElementById("gridNow").innerHTML =
+      `<div class="empty-box">Nepodařilo se načíst nebo zpracovat histnow.csv.<br>Detail: ${err.message}</div>`;
+    document.getElementById("gridRecent").innerHTML =
+      `<div class="empty-box">Nepodařilo se načíst nebo zpracovat histrecent.csv.<br>Detail: ${err.message}</div>`;
+    console.error(err);
+  }
 }
 
 load();
