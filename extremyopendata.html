@@ -290,7 +290,7 @@
 
     <div class="status-row">
       <div class="status-chip" id="status">Načítám…</div>
-      <div class="status-chip" id="sourceInfo">Zdroj: MaxMinT_daily_last_day.csv</div>
+      <div class="status-chip">Zdroj: MaxMinT_daily_last_day.csv</div>
     </div>
 
     <div class="grid" id="content"></div>
@@ -321,7 +321,7 @@
 
     function formatDateCZ(dateStr) {
       const normalized = normalizeDateString(dateStr);
-      const d = new Date(normalized);
+      const d = new Date(normalized + "T00:00:00");
       if (isNaN(d.getTime())) return dateStr || "není k dispozici";
       return d.toLocaleDateString("cs-CZ");
     }
@@ -337,7 +337,6 @@
     function formatValue(v, element) {
       const n = Number(v);
       if (!Number.isFinite(n)) return "—";
-
       if (element === "Fmax") return n.toFixed(1).replace(".", ",") + " m/s";
       if (element === "SRA") return n.toFixed(1).replace(".", ",") + " mm";
       return n.toFixed(1).replace(".", ",") + " °C";
@@ -365,6 +364,7 @@
           current += ch;
         }
       }
+
       out.push(current);
       return out;
     }
@@ -375,13 +375,13 @@
 
       if (!lines.length) return [];
 
-      const headers = csvSplit(lines[0]).map(h => h.trim());
+      const headers = csvSplit(lines[0]).map(h => h.replace(/^"|"$/g, "").trim());
 
       return lines.slice(1).map(line => {
         const cols = csvSplit(line);
         const row = {};
         headers.forEach((h, i) => {
-          row[h] = (cols[i] ?? "").trim();
+          row[h] = (cols[i] ?? "").replace(/^"|"$/g, "").trim();
         });
         return row;
       });
@@ -421,8 +421,7 @@
 
     function getEffectiveDateForElement(element, baseDate) {
       if (!baseDate) return "";
-      if (element === "SRA") return shiftDate(baseDate, -1);
-      return baseDate;
+      return element === "SRA" ? shiftDate(baseDate, -1) : baseDate;
     }
 
     function renderPanel(element, rows, baseDate) {
@@ -431,8 +430,7 @@
 
       let filtered = rows.filter(r => r.ELEMENT === element);
 
-      const hasRecordDate = filtered.some(r => normalizeDateString(r.RECORD_DATE));
-      if (hasRecordDate && effectiveDate) {
+      if (effectiveDate) {
         filtered = filtered.filter(r => normalizeDateString(r.RECORD_DATE) === effectiveDate);
       }
 
@@ -446,13 +444,11 @@
         .sort((a, b) => Number(a.RANK) - Number(b.RANK))
         .slice(0, 3);
 
-      const dateNote = effectiveDate ? ` • datum ${formatDateCZ(effectiveDate)}` : "";
-
       return `
         <section class="panel">
           <div class="panel-head">
             <h2>${element}</h2>
-            <p>${title}${dateNote}</p>
+            <p>${title} • datum ${formatDateCZ(effectiveDate)}</p>
           </div>
           <div class="panel-body">
             <div class="extreme-box hot">
@@ -499,28 +495,17 @@
           .filter(Boolean)
           .sort();
 
-        const allDates = rows
-          .map(r => normalizeDateString(r.RECORD_DATE))
-          .filter(Boolean)
-          .sort();
-
-        const baseDate = nonSraDates.length
-          ? nonSraDates[nonSraDates.length - 1]
-          : (allDates.length ? allDates[allDates.length - 1] : "");
-
+        const baseDate = nonSraDates[nonSraDates.length - 1] || "";
         const sraDate = baseDate ? shiftDate(baseDate, -1) : "";
 
-        if (baseDate) {
-          subtitleEl.textContent =
-            `Přehled pro datum ${formatDateCZ(baseDate)}${sraDate ? `, srážky (SRA) pro datum ${formatDateCZ(sraDate)}` : ""}`;
-        } else {
-          subtitleEl.textContent = "Přehled pro datum není k dispozici";
-        }
-
-        statusEl.textContent = "OK";
+        subtitleEl.textContent = baseDate
+          ? `Přehled pro datum ${formatDateCZ(baseDate)}${sraDate ? `, srážky (SRA) pro ${formatDateCZ(sraDate)}` : ""}`
+          : "Přehled pro datum není k dispozici";
 
         const elements = ["T", "TMA", "TMI", "Fmax", "SRA"];
         contentEl.innerHTML = elements.map(el => renderPanel(el, rows, baseDate)).join("");
+
+        statusEl.textContent = "OK";
       } catch (err) {
         statusEl.textContent = "Chyba";
         subtitleEl.textContent = err.message;
