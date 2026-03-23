@@ -16,7 +16,7 @@ library(tibble)
 base_data_url <- "https://opendata.chmi.cz/meteorology/climate/now/data/"
 base_meta_url <- "https://opendata.chmi.cz/meteorology/climate/now/metadata/"
 
-target_elements <- c("T", "TMA", "TMI", "Fmax", "SRA")
+target_elements <- c("T", "TMA", "TMI", "Fmax", "SRA1H")
 
 # ------------------------------------------------------------
 # Pomocné funkce
