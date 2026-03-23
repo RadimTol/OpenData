@@ -31,4 +31,3 @@ steps:
     with:
       name: histnow
       path: histnow.csv
-```
