@@ -311,9 +311,27 @@
       SRA: "Denní úhrn srážek"
     };
 
+    function normalizeDateString(dateStr) {
+      if (!dateStr) return "";
+      const s = String(dateStr).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      if (/^\d{4}\/\d{2}\/\d{2}$/.test(s)) return s.replace(/\//g, "-");
+      return s;
+    }
+
     function formatDateCZ(dateStr) {
-      const d = new Date(dateStr);
+      const normalized = normalizeDateString(dateStr);
+      const d = new Date(normalized);
+      if (isNaN(d.getTime())) return dateStr || "není k dispozici";
       return d.toLocaleDateString("cs-CZ");
+    }
+
+    function shiftDate(dateStr, days) {
+      const normalized = normalizeDateString(dateStr);
+      const d = new Date(normalized + "T00:00:00");
+      if (isNaN(d.getTime())) return normalized;
+      d.setDate(d.getDate() + days);
+      return d.toISOString().slice(0, 10);
     }
 
     function formatValue(v, element) {
@@ -401,24 +419,40 @@
       `;
     }
 
-    function renderPanel(element, rows) {
+    function getEffectiveDateForElement(element, baseDate) {
+      if (!baseDate) return "";
+      if (element === "SRA") return shiftDate(baseDate, -1);
+      return baseDate;
+    }
+
+    function renderPanel(element, rows, baseDate) {
       const title = elementInfo[element] || element;
+      const effectiveDate = getEffectiveDateForElement(element, baseDate);
 
-      const maxRows = rows
-        .filter(r => r.ELEMENT === element && r.EXTREME === "MAX")
+      let filtered = rows.filter(r => r.ELEMENT === element);
+
+      const hasRecordDate = filtered.some(r => normalizeDateString(r.RECORD_DATE));
+      if (hasRecordDate && effectiveDate) {
+        filtered = filtered.filter(r => normalizeDateString(r.RECORD_DATE) === effectiveDate);
+      }
+
+      const maxRows = filtered
+        .filter(r => r.EXTREME === "MAX")
         .sort((a, b) => Number(a.RANK) - Number(b.RANK))
         .slice(0, 3);
 
-      const minRows = rows
-        .filter(r => r.ELEMENT === element && r.EXTREME === "MIN")
+      const minRows = filtered
+        .filter(r => r.EXTREME === "MIN")
         .sort((a, b) => Number(a.RANK) - Number(b.RANK))
         .slice(0, 3);
+
+      const dateNote = effectiveDate ? ` • datum ${formatDateCZ(effectiveDate)}` : "";
 
       return `
         <section class="panel">
           <div class="panel-head">
             <h2>${element}</h2>
-            <p>${title}</p>
+            <p>${title}${dateNote}</p>
           </div>
           <div class="panel-body">
             <div class="extreme-box hot">
@@ -459,12 +493,34 @@
           throw new Error("CSV je prázdné.");
         }
 
-        const recordDate = rows[0].RECORD_DATE ? formatDateCZ(rows[0].RECORD_DATE) : "není k dispozici";
-        subtitleEl.textContent = `Přehled pro datum ${recordDate}`;
+        const nonSraDates = rows
+          .filter(r => r.ELEMENT !== "SRA")
+          .map(r => normalizeDateString(r.RECORD_DATE))
+          .filter(Boolean)
+          .sort();
+
+        const allDates = rows
+          .map(r => normalizeDateString(r.RECORD_DATE))
+          .filter(Boolean)
+          .sort();
+
+        const baseDate = nonSraDates.length
+          ? nonSraDates[nonSraDates.length - 1]
+          : (allDates.length ? allDates[allDates.length - 1] : "");
+
+        const sraDate = baseDate ? shiftDate(baseDate, -1) : "";
+
+        if (baseDate) {
+          subtitleEl.textContent =
+            `Přehled pro datum ${formatDateCZ(baseDate)}${sraDate ? `, srážky (SRA) pro datum ${formatDateCZ(sraDate)}` : ""}`;
+        } else {
+          subtitleEl.textContent = "Přehled pro datum není k dispozici";
+        }
+
         statusEl.textContent = "OK";
 
         const elements = ["T", "TMA", "TMI", "Fmax", "SRA"];
-        contentEl.innerHTML = elements.map(el => renderPanel(el, rows)).join("");
+        contentEl.innerHTML = elements.map(el => renderPanel(el, rows, baseDate)).join("");
       } catch (err) {
         statusEl.textContent = "Chyba";
         subtitleEl.textContent = err.message;
