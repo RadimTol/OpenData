@@ -308,7 +308,7 @@
       TMA: "Maximální denní teplota",
       TMI: "Minimální denní teplota",
       Fmax: "Maximální náraz větru",
-      SRA10M: "Srážky za 10 minut"
+      SRA1H: "Srážky za 10 minut"
     };
 
     function formatDateTimeCZ(dateStr) {
@@ -334,7 +334,7 @@
       if (!Number.isFinite(n)) return "—";
 
       if (element === "Fmax") return n.toFixed(1).replace(".", ",") + " m/s";
-      if (element === "SRA10M") return n.toFixed(1).replace(".", ",") + " mm";
+      if (element === "SRA1H") return n.toFixed(1).replace(".", ",") + " mm";
       return n.toFixed(1).replace(".", ",") + " °C";
     }
 
@@ -481,7 +481,7 @@
         subtitleEl.textContent = `Data k: ${latestDt ? formatDateTimeCZ(latestDt) : "není k dispozici"}`;
         statusEl.textContent = "OK";
 
-        const elements = ["T", "TMA", "TMI", "Fmax", "SRA10M"];
+        const elements = ["T", "TMA", "TMI", "Fmax", "SRA1H"];
         contentEl.innerHTML = elements.map(el => renderPanel(el, rows)).join("");
       } catch (err) {
         statusEl.textContent = "Chyba";
