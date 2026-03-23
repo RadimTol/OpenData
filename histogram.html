@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Histogramy hodnot</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     :root {
       --chmi-blue: #005aa3;
@@ -15,11 +16,6 @@
       --muted: #5e6b78;
       --shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
       --radius: 16px;
-      --border: #d7e4f0;
-    }
-
-    * {
-      box-sizing: border-box;
     }
 
     body {
@@ -51,18 +47,6 @@
       font-weight: bold;
       border: none;
       cursor: pointer;
-      font-family: inherit;
-      font-size: 1rem;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1.2;
-      transition: background 0.2s ease, transform 0.15s ease;
-    }
-
-    .nav-btn:hover {
-      background: var(--chmi-blue-light);
-      transform: translateY(-1px);
     }
 
     .hero {
@@ -74,461 +58,196 @@
       margin-bottom: 22px;
     }
 
-    .hero h1 {
-      margin: 0;
-      font-size: 2rem;
-      line-height: 1.2;
-    }
-
-    .status-row {
-      margin: 18px 0 22px 0;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      align-items: center;
-    }
-
-    .status-chip {
-      background: white;
-      border-radius: 999px;
-      padding: 10px 14px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.07);
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
     .group {
-      margin-bottom: 28px;
+      margin-bottom: 30px;
     }
 
     .group-header {
       background: white;
       border-left: 6px solid var(--chmi-blue);
       border-radius: 14px;
-      padding: 16px 18px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+      padding: 16px;
       margin-bottom: 16px;
-    }
-
-    .group-header h2 {
-      margin: 0 0 4px 0;
-      font-size: 1.35rem;
-      color: var(--chmi-blue);
-    }
-
-    .group-header p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.95rem;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(320px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
     }
 
     .panel {
-      background: var(--card-bg);
+      background: white;
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      overflow: hidden;
-      border: 1px solid #e7eef6;
     }
 
     .panel-head {
-      background: linear-gradient(135deg, #eaf3fb, #dbeaf8);
-      padding: 16px 18px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .panel-head h3 {
-      margin: 0 0 6px 0;
-      font-size: 1.15rem;
-      color: var(--chmi-blue);
-    }
-
-    .panel-head p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.92rem;
+      padding: 12px;
+      background: #eaf3fb;
+      border-bottom: 1px solid #dbeaf8;
     }
 
     .panel-body {
-      padding: 18px;
+      padding: 12px;
     }
 
     .chart-wrap {
-      position: relative;
-      height: 320px;
-    }
-
-    .empty-box {
-      background: #fff;
-      border: 1px dashed #c5d7e8;
-      border-radius: 14px;
-      padding: 16px;
-      color: var(--muted);
+      height: 240px;
     }
 
     @media (max-width: 900px) {
       .grid {
         grid-template-columns: 1fr;
       }
-
-      .chart-wrap {
-        height: 280px;
-      }
-    }
-
-    @media (max-width: 600px) {
-      .page {
-        padding: 16px;
-      }
-
-      .hero h1 {
-        font-size: 1.6rem;
-      }
     }
   </style>
 </head>
+
 <body>
   <div class="page">
+
     <div class="top-bar">
       <a href="index.html" class="nav-btn">← Back</a>
-      <button onclick="forceReload()" class="nav-btn" type="button">🔄 Refresh</button>
+      <button onclick="location.reload()" class="nav-btn">🔄 Refresh</button>
     </div>
 
     <div class="hero">
       <h1>Histogramy hodnot</h1>
     </div>
 
-    <div class="status-row">
-      <div class="status-chip" id="status">Načítám…</div>
-      <div class="status-chip">Zdroj: histnow.csv, histrecent.csv</div>
-    </div>
-
+    <!-- DNES -->
     <section class="group">
       <div class="group-header">
         <h2 id="titleNow">Histogram hodnot dnes</h2>
-        <p>Dnešní rozdělení hodnot pro T, Fmax, SRA a SRA1H</p>
       </div>
       <div class="grid" id="gridNow"></div>
     </section>
 
+    <!-- VČERA -->
     <section class="group">
       <div class="group-header">
         <h2 id="titleRecent">Histogram hodnot včera</h2>
-        <p>Včerejší rozdělení hodnot pro T, Fmax, SRA a SRA1H</p>
       </div>
       <div class="grid" id="gridRecent"></div>
     </section>
+
   </div>
 
-  <script>
-    const elementInfo = {
-      T: "Teplota",
-      Fmax: "Maximální náraz větru",
-      SRA: "Srážkový úhrn",
-      SRA1H: "Srážkový úhrn za 1 hodinu"
-    };
+<script>
+const elementInfo = {
+  T: "Teplota",
+  Fmax: "Maximální náraz větru",
+  SRA: "Srážky",
+  SRA1H: "Srážky 1h"
+};
 
-    const elementUnits = {
-      T: "°C",
-      Fmax: "m/s",
-      SRA: "mm",
-      SRA1H: "mm"
-    };
+const elementUnits = {
+  T: "°C",
+  Fmax: "m/s",
+  SRA: "mm",
+  SRA1H: "mm"
+};
 
-    const chartRefs = [];
+function parseCsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(",");
+  return lines.slice(1).map(line => {
+    const cols = line.split(",");
+    let obj = {};
+    headers.forEach((h,i)=> obj[h]=cols[i]);
+    return obj;
+  });
+}
 
-    function forceReload() {
-      const url = new URL(window.location.href);
-      url.searchParams.set("_t", Date.now());
-      window.location.href = url.toString();
-    }
+function latestTime(rows){
+  const arr = rows.map(r=>r.run_datetime_local).filter(Boolean);
+  arr.sort();
+  return arr[arr.length-1];
+}
 
-    function csvSplit(line) {
-      const out = [];
-      let current = "";
-      let inQuotes = false;
+function formatDate(s){
+  const d = new Date(s.replace(" ","T"));
+  return d.toLocaleString("cs-CZ",{day:"numeric",month:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
 
-      for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
+function buildData(rows, element){
+  return rows
+    .filter(r=>r.element===element)
+    .map(r=>({
+      left: Number(r.bin_left),
+      right: Number(r.bin_right),
+      count: Number(r.count)
+    }))
+    .sort((a,b)=>a.left-b.left);
+}
 
-        if (ch === '"') {
-          if (inQuotes && line[i + 1] === '"') {
-            current += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-        } else if (ch === "," && !inQuotes) {
-          out.push(current);
-          current = "";
-        } else {
-          current += ch;
-        }
-      }
-
-      out.push(current);
-      return out;
-    }
-
-    function parseCsv(text) {
-      const clean = text.replace(/^\uFEFF/, "").trim();
-      const lines = clean.split(/\r?\n/).filter(Boolean);
-
-      if (!lines.length) return [];
-
-      const headers = csvSplit(lines[0]).map(h => h.replace(/^"|"$/g, "").trim());
-
-      return lines.slice(1).map(line => {
-        const cols = csvSplit(line);
-        const row = {};
-        headers.forEach((h, i) => {
-          row[h] = (cols[i] ?? "").replace(/^"|"$/g, "").trim();
-        });
-        return row;
-      });
-    }
-
-    async function fetchCsv(url) {
-      const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`Nelze načíst ${url} (${response.status})`);
-      }
-      const text = await response.text();
-      return parseCsv(text);
-    }
-
-    function parseLocalDateTime(value) {
-      if (!value) return null;
-
-      const s = String(value)
-        .replace(" CET", "")
-        .replace(" CEST", "")
-        .trim()
-        .replace(" ", "T");
-
-      const d = new Date(s);
-      return isNaN(d.getTime()) ? null : d;
-    }
-
-    function formatRunDateTime(value) {
-      const d = parseLocalDateTime(value);
-      if (!d) return "není k dispozici";
-
-      const day = d.getDate();
-      const month = d.getMonth() + 1;
-      const year = d.getFullYear();
-      const hour = String(d.getHours()).padStart(2, "0");
-      const minute = String(d.getMinutes()).padStart(2, "0");
-
-      return `${day}.${month}.${year} ${hour}:${minute}`;
-    }
-
-    function latestRunDateTime(rows) {
-      const values = rows
-        .map(r => r.run_datetime_local || "")
-        .filter(Boolean);
-
-      if (!values.length) return "";
-
-      values.sort((a, b) => {
-        const da = parseLocalDateTime(a);
-        const db = parseLocalDateTime(b);
-        if (!da && !db) return 0;
-        if (!da) return -1;
-        if (!db) return 1;
-        return da - db;
-      });
-
-      return values[values.length - 1];
-    }
-
-    function createPanel(container, element, suffix) {
-      const panel = document.createElement("section");
-      panel.className = "panel";
-
-      panel.innerHTML = `
-        <div class="panel-head">
-          <h3>${element}</h3>
-          <p>${elementInfo[element] || element}</p>
-        </div>
-        <div class="panel-body">
-          <div class="chart-wrap">
-            <canvas id="${suffix}_${element}"></canvas>
-          </div>
-        </div>
-      `;
-
-      container.appendChild(panel);
-      return `${suffix}_${element}`;
-    }
-
-    function createEmptyPanel(container, element, message) {
-      const panel = document.createElement("section");
-      panel.className = "panel";
-
-      panel.innerHTML = `
-        <div class="panel-head">
-          <h3>${element}</h3>
-          <p>${elementInfo[element] || element}</p>
-        </div>
-        <div class="panel-body">
-          <div class="empty-box">${message}</div>
-        </div>
-      `;
-
-      container.appendChild(panel);
-    }
-
-    function buildHistogramData(rows, element) {
-      const filtered = rows
-        .filter(r => (r.element || "") === element)
-        .map(r => ({
-          left: Number(r.bin_left),
-          right: Number(r.bin_right),
-          count: Number(r.count)
-        }))
-        .filter(r =>
-          Number.isFinite(r.left) &&
-          Number.isFinite(r.right) &&
-          Number.isFinite(r.count)
-        )
-        .sort((a, b) => a.left - b.left);
-
-      if (!filtered.length) return null;
-
-      return {
-        labels: filtered.map(r =>
-          `${String(r.left).replace(".", ",")} – ${String(r.right).replace(".", ",")}`
-        ),
-        counts: filtered.map(r => r.count)
-      };
-    }
-
-    function renderHistogram(canvasId, element, histData) {
-      const ctx = document.getElementById(canvasId);
-      if (!ctx) return;
-
-      const chart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: histData.labels,
-          datasets: [{
-            label: "Počet",
-            data: histData.counts
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: false,
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              callbacks: {
-                title: function(items) {
-                  return `Interval: ${items[0].label} ${elementUnits[element] || ""}`.trim();
-                },
-                label: function(context) {
-                  return `Počet: ${context.raw}`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: elementUnits[element]
-                  ? `Interval hodnot [${elementUnits[element]}]`
-                  : "Interval hodnot"
-              },
-              ticks: {
-                autoSkip: true,
-                maxRotation: 0
-              }
-            },
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: "Počet"
-              }
-            }
-          }
-        }
-      });
-
-      chartRefs.push(chart);
-    }
-
-    function clearCharts() {
-      while (chartRefs.length) {
-        const c = chartRefs.pop();
-        c.destroy();
+function drawChart(id, element, data){
+  new Chart(document.getElementById(id),{
+    type:"bar",
+    data:{
+      labels:data.map(d=>`${d.left}-${d.right}`),
+      datasets:[{data:data.map(d=>d.count)}]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{title:{display:true,text:elementUnits[element]}},
+        y:{beginAtZero:true}
       }
     }
+  });
+}
 
-    function renderGroup(rows, gridId, titleId, baseTitle, suffix) {
-      const grid = document.getElementById(gridId);
-      const title = document.getElementById(titleId);
+function renderGroup(rows, gridId, titleId, title, elements){
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = "";
 
-      grid.innerHTML = "";
+  const dt = latestTime(rows);
+  if(dt){
+    document.getElementById(titleId).textContent =
+      `${title} (data ${formatDate(dt)})`;
+  }
 
-      const latest = latestRunDateTime(rows);
-      title.textContent = latest
-        ? `${baseTitle} (data ${formatRunDateTime(latest)})`
-        : baseTitle;
+  elements.forEach(el=>{
+    const data = buildData(rows, el);
 
-      ["T", "Fmax", "SRA", "SRA1H"].forEach(element => {
-        const histData = buildHistogramData(rows, element);
+    const panel = document.createElement("div");
+    panel.className = "panel";
 
-        if (!histData) {
-          createEmptyPanel(grid, element, "Pro tento prvek nejsou k dispozici data histogramu.");
-          return;
-        }
+    panel.innerHTML = `
+      <div class="panel-head"><b>${el}</b></div>
+      <div class="panel-body">
+        <div class="chart-wrap">
+          <canvas id="${gridId}_${el}"></canvas>
+        </div>
+      </div>
+    `;
 
-        const canvasId = createPanel(grid, element, suffix);
-        renderHistogram(canvasId, element, histData);
-      });
+    grid.appendChild(panel);
+
+    if(data.length){
+      drawChart(`${gridId}_${el}`, el, data);
     }
+  });
+}
 
-    async function loadData() {
-      const statusEl = document.getElementById("status");
+async function load(){
+  const [now, recent] = await Promise.all([
+    fetch("histnow.csv").then(r=>r.text()).then(parseCsv),
+    fetch("histrecent.csv").then(r=>r.text()).then(parseCsv)
+  ]);
 
-      try {
-        clearCharts();
+  renderGroup(now,"gridNow","titleNow","Histogram hodnot dnes",
+    ["T","Fmax","SRA1H"]);
 
-        const [rowsNow, rowsRecent] = await Promise.all([
-          fetchCsv("histnow.csv"),
-          fetchCsv("histrecent.csv")
-        ]);
+  renderGroup(recent,"gridRecent","titleRecent","Histogram hodnot včera",
+    ["T","Fmax","SRA"]);
+}
 
-        if (!rowsNow.length && !rowsRecent.length) {
-          throw new Error("Oba CSV soubory jsou prázdné.");
-        }
+load();
+</script>
 
-        renderGroup(rowsNow, "gridNow", "titleNow", "Histogram hodnot dnes", "now");
-        renderGroup(rowsRecent, "gridRecent", "titleRecent", "Histogram hodnot včera", "recent");
-
-        statusEl.textContent = "OK";
-      } catch (err) {
-        statusEl.textContent = "Chyba: " + err.message;
-        document.getElementById("gridNow").innerHTML =
-          `<div class="empty-box">Nepodařilo se načíst nebo zpracovat histnow.csv.<br>Detail: ${err.message}</div>`;
-        document.getElementById("gridRecent").innerHTML =
-          `<div class="empty-box">Nepodařilo se načíst nebo zpracovat histrecent.csv.<br>Detail: ${err.message}</div>`;
-        console.error(err);
-      }
-    }
-
-    loadData();
-  </script>
 </body>
 </html>
