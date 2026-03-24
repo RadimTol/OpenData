@@ -106,10 +106,10 @@ prepare_station_metadata <- function(meta1_url) {
     dplyr::distinct(WSI, .keep_all = TRUE)
 }
 
-get_wsi_for_elements <- function(meta2_url, elements = target_elements) {
+get_wsi_for_elements <- function(meta2_url) {
   meta2 <- parse_chmi_json_values(meta2_url)
 
-  needed <- c("WSI", "EG_EL_ABBREVIATION")
+  needed <- c("WSI", "EG_EL_ABBREVIATION", "OBS_TYPE")
   missing_cols <- setdiff(needed, names(meta2))
   if (length(missing_cols) > 0) {
     stop("V meta2 chybí očekávané sloupce: ", paste(missing_cols, collapse = ", "))
@@ -118,9 +118,13 @@ get_wsi_for_elements <- function(meta2_url, elements = target_elements) {
   meta2 |>
     dplyr::transmute(
       WSI = as.character(WSI),
-      EG_EL_ABBREVIATION = as.character(EG_EL_ABBREVIATION)
+      EG_EL_ABBREVIATION = as.character(EG_EL_ABBREVIATION),
+      OBS_TYPE = as.character(OBS_TYPE)
     ) |>
-    dplyr::filter(EG_EL_ABBREVIATION %in% elements) |>
+    dplyr::filter(
+      (EG_EL_ABBREVIATION %in% c("T", "TMA", "TMI", "Fmax") & OBS_TYPE == "10M") |
+      (EG_EL_ABBREVIATION == "SRA1H" & OBS_TYPE == "1H")
+    ) |>
     dplyr::distinct(WSI)
 }
 
@@ -213,7 +217,7 @@ if (length(data_files_all) == 0) {
 meta2_url <- get_latest_file_by_pattern(base_meta_url, "^meta2-\\d{8}\\.json$")
 meta1_url <- get_latest_file_by_pattern(base_meta_url, "^meta1-\\d{8}\\.json$")
 
-wsi_tbl <- get_wsi_for_elements(meta2_url, target_elements)
+wsi_tbl <- get_wsi_for_elements(meta2_url)
 data_files <- filter_files_by_wsi(data_files_all, wsi_tbl$WSI)
 
 if (length(data_files) == 0) {
