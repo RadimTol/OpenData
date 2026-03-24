@@ -288,11 +288,6 @@
       <div class="meta" id="subtitle">Načítám data…</div>
     </div>
 
-    <div class="status-row">
-      <div class="status-chip" id="status">Načítám…</div>
-      <div class="status-chip" id="sourceInfo">Zdroj: MaxMinT.csv</div>
-    </div>
-
     <div class="grid" id="content"></div>
   </div>
 
@@ -479,7 +474,6 @@
           .pop();
 
         subtitleEl.textContent = `Data k: ${latestDt ? formatDateTimeCZ(latestDt) : "není k dispozici"}`;
-        statusEl.textContent = "OK";
 
         const elements = ["T", "TMA", "TMI", "Fmax", "SRA1H"];
         contentEl.innerHTML = elements.map(el => renderPanel(el, rows)).join("");
