@@ -238,13 +238,13 @@ if (nrow(latest_vals) == 0) {
 # Uložení vstupních dat pro histogram
 # ------------------------------------------------------------
 
-readr::write_excel_csv(
-  latest_vals,
-  "datanow.csv",
-  na = ""
-)
+# readr::write_excel_csv(
+#  latest_vals,
+#  "datanow.csv",
+#  na = ""
+# )
 
-message("Uložena vstupní data: datanow.csv")
+# message("Uložena vstupní data: datanow.csv")
 
 result <- make_histogram_table(latest_vals, run_time_local, bins = 10)
 
