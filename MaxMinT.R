@@ -60,7 +60,7 @@ get_latest_file_by_pattern <- function(index_url, pattern) {
   paste0(index_url, files[length(files)])
 }
 
-get_today_files_from_index <- function(index_url, today = Sys.Date()) {
+get_today_files_from_index <- function(index_url, today) {
   page <- rvest::read_html(index_url)
   txt  <- rvest::html_text2(page)
 
@@ -68,11 +68,12 @@ get_today_files_from_index <- function(index_url, today = Sys.Date()) {
   lines <- trimws(lines)
   lines <- lines[nzchar(lines)]
 
-  today_str <- format(today, "%d-%b-%Y")
+  today_listing <- format(today, "%d-%b-%Y")
+  today_suffix  <- format(today, "%Y%m%d")
 
   hits <- stringr::str_subset(
     lines,
-    paste0("^.+\\.json\\s+", today_str, "\\s+\\d{2}:\\d{2}\\s+\\d+$")
+    paste0("^.+\\.json\\s+", today_listing, "\\s+\\d{2}:\\d{2}\\s+\\d+$")
   )
 
   if (length(hits) == 0) {
@@ -85,6 +86,12 @@ get_today_files_from_index <- function(index_url, today = Sys.Date()) {
   )[, 2]
 
   file_names <- trimws(file_names)
+
+  # Dulezite: nech jen soubory pro aktualni den i podle data v nazvu
+  file_names <- file_names[
+    stringr::str_detect(file_names, paste0("-", today_suffix, "\\.json$"))
+  ]
+
   unique(paste0(index_url, file_names))
 }
 
@@ -171,9 +178,11 @@ read_now_data <- function(file_urls, elements = target_elements) {
     needed <- c("STATION", "ELEMENT", "DT", "VAL")
     missing_cols <- setdiff(needed, names(df))
     if (length(missing_cols) > 0) {
-      stop("V datovém souboru chybí očekávané sloupce: ",
-           paste(missing_cols, collapse = ", "),
-           " | soubor: ", u)
+      stop(
+        "V datovém souboru chybí očekávané sloupce: ",
+        paste(missing_cols, collapse = ", "),
+        " | soubor: ", u
+      )
     }
 
     df |>
@@ -229,8 +238,8 @@ make_listnow_table <- function(file_urls, meta1_url, meta2_url, run_time_local) 
 # Hlavní běh
 # ------------------------------------------------------------
 
-today <- Sys.Date()
 run_time_local <- lubridate::with_tz(Sys.time(), tz_local)
+today <- as.Date(run_time_local)
 
 data_files_all <- get_today_files_from_index(base_data_url, today)
 
@@ -245,22 +254,22 @@ station_obs_tbl <- get_station_obs_map(meta2_url)
 data_files <- filter_files_by_station_obs(data_files_all, station_obs_tbl)
 
 if (length(data_files) == 0) {
-  stop("Po filtrování přes meta2 a OBS_TYPE nezbyly žádné dnešní soubory.")
+  stop("Po filtrování přes meta2, OBS_TYPE a datum v názvu nezbyly žádné dnešní soubory.")
 }
 
 # ------------------------------------------------------------
 # Seznam zpracovaných souborů
 # ------------------------------------------------------------
 
-listnow <- make_listnow_table(
-  file_urls = data_files,
-  meta1_url = meta1_url,
-  meta2_url = meta2_url,
-  run_time_local = run_time_local
-)
+# listnow <- make_listnow_table(
+#  file_urls = data_files,
+#  meta1_url = meta1_url,
+#  meta2_url = meta2_url,
+#  run_time_local = run_time_local
+# )
 
-readr::write_excel_csv(listnow, "listnow.csv", na = "")
-message("Hotovo: listnow.csv")
+# readr::write_excel_csv(listnow, "listnow.csv", na = "")
+# message("Hotovo: listnow.csv")
 
 station_meta <- prepare_station_metadata(meta1_url)
 raw_data <- read_now_data(data_files, target_elements)
@@ -272,6 +281,6 @@ if (nrow(raw_data) == 0) {
 result <- get_top_bottom3_from_all_values(raw_data, station_meta)
 
 readr::write_excel_csv(result, "MaxMinT.csv", na = "")
-
 message("Hotovo: MaxMinT.csv")
+
 print(result)
