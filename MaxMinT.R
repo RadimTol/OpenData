@@ -107,7 +107,7 @@ prepare_station_metadata <- function(meta1_url) {
     dplyr::distinct(WSI, .keep_all = TRUE)
 }
 
-get_wsi_for_elements <- function(meta2_url) {
+get_station_obs_map <- function(meta2_url) {
   meta2 <- parse_chmi_json_values(meta2_url)
 
   needed <- c("WSI", "EG_EL_ABBREVIATION", "OBS_TYPE")
@@ -119,25 +119,44 @@ get_wsi_for_elements <- function(meta2_url) {
   meta2 |>
     dplyr::transmute(
       WSI = as.character(WSI),
-      EG_EL_ABBREVIATION = as.character(EG_EL_ABBREVIATION),
+      ELEMENT = as.character(EG_EL_ABBREVIATION),
       OBS_TYPE = as.character(OBS_TYPE)
     ) |>
     dplyr::filter(
-      (EG_EL_ABBREVIATION %in% c("T", "TMA", "TMI", "Fmax") & OBS_TYPE == "10M") |
-      (EG_EL_ABBREVIATION == "SRA1H" & OBS_TYPE == "1H")
+      (ELEMENT %in% c("T", "TMA", "TMI", "Fmax") & OBS_TYPE == "10M") |
+      (ELEMENT == "SRA1H" & OBS_TYPE == "1H")
     ) |>
-    dplyr::distinct(WSI)
+    dplyr::distinct(WSI, OBS_TYPE)
 }
 
-filter_files_by_wsi <- function(file_urls, wsi_vector) {
-  if (length(file_urls) == 0 || length(wsi_vector) == 0) {
+filter_files_by_station_obs <- function(file_urls, station_obs_tbl) {
+  if (length(file_urls) == 0 || nrow(station_obs_tbl) == 0) {
     return(character(0))
   }
 
   file_names <- basename(file_urls)
 
-  keep <- vapply(file_names, function(fn) {
-    any(stringr::str_detect(fn, stringr::fixed(wsi_vector)))
+  keep <- vapply(seq_along(file_names), function(i) {
+    fn <- file_names[i]
+
+    file_obs_type <- dplyr::case_when(
+      stringr::str_starts(fn, "10m-") ~ "10M",
+      stringr::str_starts(fn, "1h-")  ~ "1H",
+      TRUE ~ NA_character_
+    )
+
+    if (is.na(file_obs_type)) {
+      return(FALSE)
+    }
+
+    candidates <- station_obs_tbl |>
+      dplyr::filter(OBS_TYPE == file_obs_type)
+
+    if (nrow(candidates) == 0) {
+      return(FALSE)
+    }
+
+    any(stringr::str_detect(fn, stringr::fixed(candidates$WSI)))
   }, logical(1))
 
   file_urls[keep]
@@ -169,16 +188,8 @@ read_now_data <- function(file_urls, elements = target_elements) {
   })
 }
 
-get_latest_per_station_element <- function(df) {
-  df |>
-    dplyr::arrange(STATION, ELEMENT, dplyr::desc(DT)) |>
-    dplyr::group_by(STATION, ELEMENT) |>
-    dplyr::slice(1) |>
-    dplyr::ungroup()
-}
-
-get_top_bottom3 <- function(df_latest, station_meta) {
-  joined <- df_latest |>
+get_top_bottom3_from_all_values <- function(df_all, station_meta) {
+  joined <- df_all |>
     dplyr::left_join(
       station_meta |> dplyr::select(WSI, GH_ID, NAME, ELEVATION),
       by = c("STATION" = "WSI")
@@ -186,14 +197,14 @@ get_top_bottom3 <- function(df_latest, station_meta) {
 
   highest <- joined |>
     dplyr::group_by(ELEMENT) |>
-    dplyr::arrange(dplyr::desc(VAL), dplyr::desc(DT), .by_group = TRUE) |>
+    dplyr::arrange(dplyr::desc(VAL), dplyr::desc(DT), STATION, .by_group = TRUE) |>
     dplyr::slice_head(n = 3) |>
     dplyr::mutate(EXTREME = "MAX", RANK = dplyr::row_number()) |>
     dplyr::ungroup()
 
   lowest <- joined |>
     dplyr::group_by(ELEMENT) |>
-    dplyr::arrange(VAL, dplyr::desc(DT), .by_group = TRUE) |>
+    dplyr::arrange(VAL, dplyr::desc(DT), STATION, .by_group = TRUE) |>
     dplyr::slice_head(n = 3) |>
     dplyr::mutate(EXTREME = "MIN", RANK = dplyr::row_number()) |>
     dplyr::ungroup()
@@ -230,26 +241,26 @@ if (length(data_files_all) == 0) {
 meta2_url <- get_latest_file_by_pattern(base_meta_url, "^meta2-\\d{8}\\.json$")
 meta1_url <- get_latest_file_by_pattern(base_meta_url, "^meta1-\\d{8}\\.json$")
 
-wsi_tbl <- get_wsi_for_elements(meta2_url)
-data_files <- filter_files_by_wsi(data_files_all, wsi_tbl$WSI)
+station_obs_tbl <- get_station_obs_map(meta2_url)
+data_files <- filter_files_by_station_obs(data_files_all, station_obs_tbl)
 
 if (length(data_files) == 0) {
-  stop("Po filtrování přes meta2 nezbyly žádné dnešní soubory.")
+  stop("Po filtrování přes meta2 a OBS_TYPE nezbyly žádné dnešní soubory.")
 }
 
 # ------------------------------------------------------------
 # Seznam zpracovaných souborů
 # ------------------------------------------------------------
 
-listnow <- make_listnow_table(
-  file_urls = data_files,
-  meta1_url = meta1_url,
-  meta2_url = meta2_url,
-  run_time_local = run_time_local
-)
+# listnow <- make_listnow_table(
+#  file_urls = data_files,
+#  meta1_url = meta1_url,
+#  meta2_url = meta2_url,
+#  run_time_local = run_time_local
+# )
 
-readr::write_excel_csv(listnow, "listnow.csv", na = "")
-message("Hotovo: listnow.csv")
+# readr::write_excel_csv(listnow, "listnow.csv", na = "")
+# message("Hotovo: listnow.csv")
 
 station_meta <- prepare_station_metadata(meta1_url)
 raw_data <- read_now_data(data_files, target_elements)
@@ -258,8 +269,7 @@ if (nrow(raw_data) == 0) {
   stop("V načtených souborech nejsou žádná data pro požadované prvky.")
 }
 
-latest_vals <- get_latest_per_station_element(raw_data)
-result <- get_top_bottom3(latest_vals, station_meta)
+result <- get_top_bottom3_from_all_values(raw_data, station_meta)
 
 readr::write_excel_csv(result, "MaxMinT.csv", na = "")
 
