@@ -262,6 +262,18 @@ if (nrow(effective_data) == 0) {
   stop("Po výběru referenčních dnů nezůstala žádná data.")
 }
 
+# ------------------------------------------------------------
+# Uložení vstupních dat pro histogram
+# ------------------------------------------------------------
+
+readr::write_excel_csv(
+  effective_data,
+  "datarecent.csv",
+  na = ""
+)
+
+message("Uložena vstupní data: datarecent.csv")
+
 result <- make_histogram_table(effective_data, run_time_local, bins = 10)
 
 if (nrow(result) == 0) {
