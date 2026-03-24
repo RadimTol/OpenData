@@ -288,11 +288,6 @@
       <div class="meta" id="subtitle">Načítám data…</div>
     </div>
 
-    <div class="status-row">
-      <div class="status-chip" id="status">Načítám…</div>
-      <div class="status-chip">Zdroj: MaxMinT_daily_last_day.csv</div>
-    </div>
-
     <div class="grid" id="content"></div>
   </div>
 
@@ -514,14 +509,13 @@
         const sraDate = baseDate ? shiftDate(baseDate, -1) : "";
 
         subtitleEl.textContent = baseDate
-          ? `Přehled pro datum ${formatDateCZ(baseDate)}${sraDate ? `, srážky (SRA) pro ${formatDateCZ(sraDate)}` : ""}`
+          ? `Přehled pro ${formatDateCZ(baseDate)}`
           : "Přehled pro datum není k dispozici";
 
         const elements = ["T", "TMA", "TMI", "Fmax", "SRA"];
         contentEl.innerHTML = elements.map(el => renderPanel(el, rows, baseDate)).join("");
 
-        statusEl.textContent = "OK";
-      } catch (err) {
+        } catch (err) {
         statusEl.textContent = "Chyba";
         subtitleEl.textContent = err.message;
         contentEl.innerHTML = `
