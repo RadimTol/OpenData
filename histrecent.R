@@ -266,13 +266,13 @@ if (nrow(effective_data) == 0) {
 # Uložení vstupních dat pro histogram
 # ------------------------------------------------------------
 
-readr::write_excel_csv(
-  effective_data,
-  "datarecent.csv",
-  na = ""
-)
+# readr::write_excel_csv(
+#  effective_data,
+#  "datarecent.csv",
+#  na = ""
+# )
 
-message("Uložena vstupní data: datarecent.csv")
+# message("Uložena vstupní data: datarecent.csv")
 
 result <- make_histogram_table(effective_data, run_time_local, bins = 10)
 
