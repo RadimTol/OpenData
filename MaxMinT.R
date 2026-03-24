@@ -252,15 +252,15 @@ if (length(data_files) == 0) {
 # Seznam zpracovaných souborů
 # ------------------------------------------------------------
 
-# listnow <- make_listnow_table(
-#  file_urls = data_files,
-#  meta1_url = meta1_url,
-#  meta2_url = meta2_url,
-#  run_time_local = run_time_local
-# )
+listnow <- make_listnow_table(
+  file_urls = data_files,
+  meta1_url = meta1_url,
+  meta2_url = meta2_url,
+  run_time_local = run_time_local
+)
 
-# readr::write_excel_csv(listnow, "listnow.csv", na = "")
-# message("Hotovo: listnow.csv")
+readr::write_excel_csv(listnow, "listnow.csv", na = "")
+message("Hotovo: listnow.csv")
 
 station_meta <- prepare_station_metadata(meta1_url)
 raw_data <- read_now_data(data_files, target_elements)
