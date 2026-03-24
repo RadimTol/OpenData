@@ -17,6 +17,7 @@ base_data_url <- "https://opendata.chmi.cz/meteorology/climate/now/data/"
 base_meta_url <- "https://opendata.chmi.cz/meteorology/climate/now/metadata/"
 
 target_elements <- c("T", "TMA", "TMI", "Fmax", "SRA1H")
+tz_local <- "Europe/Prague"
 
 # ------------------------------------------------------------
 # Pomocné funkce
@@ -202,11 +203,23 @@ get_top_bottom3 <- function(df_latest, station_meta) {
     dplyr::arrange(ELEMENT, EXTREME, RANK)
 }
 
+make_listnow_table <- function(file_urls, meta1_url, meta2_url, run_time_local) {
+  tibble::tibble(
+    run_datetime_local = format(run_time_local, "%Y-%m-%d %H:%M:%S %Z"),
+    meta1_url = meta1_url,
+    meta2_url = meta2_url,
+    file_url = file_urls,
+    file_name = basename(file_urls)
+  ) |>
+    dplyr::arrange(file_name)
+}
+
 # ------------------------------------------------------------
 # Hlavní běh
 # ------------------------------------------------------------
 
 today <- Sys.Date()
+run_time_local <- lubridate::with_tz(Sys.time(), tz_local)
 
 data_files_all <- get_today_files_from_index(base_data_url, today)
 
@@ -223,6 +236,20 @@ data_files <- filter_files_by_wsi(data_files_all, wsi_tbl$WSI)
 if (length(data_files) == 0) {
   stop("Po filtrování přes meta2 nezbyly žádné dnešní soubory.")
 }
+
+# ------------------------------------------------------------
+# Seznam zpracovaných souborů
+# ------------------------------------------------------------
+
+listnow <- make_listnow_table(
+  file_urls = data_files,
+  meta1_url = meta1_url,
+  meta2_url = meta2_url,
+  run_time_local = run_time_local
+)
+
+readr::write_excel_csv(listnow, "listnow.csv", na = "")
+message("Hotovo: listnow.csv")
 
 station_meta <- prepare_station_metadata(meta1_url)
 raw_data <- read_now_data(data_files, target_elements)
