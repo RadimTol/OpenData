@@ -433,8 +433,10 @@ function chart(id, element, data) {
             text: "Počet"
           },
           ticks: {
+            stepSize: 1,
+            precision: 0,
             callback: function(value) {
-              return formatNumber1(Number(value));
+              return Math.round(value);
             }
           }
         }
