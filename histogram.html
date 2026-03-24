@@ -291,20 +291,33 @@ function parseDate(s) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-<!--
-function fmt(dt) {
+function fmtDateTimeCZ(dt) {
   if (!dt) return "není k dispozici";
 
-  return dt.toLocaleString("cs-CZ", {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  const day = dt.getDate();
+  const month = dt.getMonth() + 1;
+  const year = dt.getFullYear();
+  const hour = String(dt.getHours()).padStart(2, "0");
+  const minute = String(dt.getMinutes()).padStart(2, "0");
+
+  return `${day}.${month}.${year} ${hour}:${minute}`;
 }
--->
-  
+
+function fmtDateCZOnly(dateStr) {
+  if (!dateStr) return "není k dispozici";
+
+  const clean = String(dateStr).trim().replace(/\//g, "-");
+  const d = new Date(clean + "T00:00:00");
+
+  if (isNaN(d.getTime())) return dateStr;
+
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const year = d.getFullYear();
+
+  return `${day}.${month}.${year}`;
+}
+
 function latest(values) {
   const valid = values.filter(Boolean);
 
@@ -465,15 +478,14 @@ async function load() {
     ]);
 
     document.getElementById("mainTitle").textContent =
-      `Histogramy hodnot (připraveno: ${fmt(parseDate(mainTime))})`;
+      `Histogramy hodnot (připraveno: ${fmtDateTimeCZ(parseDate(mainTime))})`;
 
-    const nowTime = latest(now.map(r => r.value_datetime_utc));
     document.getElementById("titleNow").textContent =
-      `Histogram hodnot dnes (${fmt(parseDate(nowTime))})`;
+      "Histogram hodnot dnes";
 
     const recTime = latest(rec.map(r => r.value_date));
     document.getElementById("titleRecent").textContent =
-      `Histogram hodnot včera (${recTime || "není k dispozici"})`;
+      `Histogram hodnot včera (${fmtDateCZOnly(recTime)})`;
 
     render(now, "gridNow", ["T", "Fmax", "SRA1H"], "now");
     render(rec, "gridRecent", ["T", "Fmax", "SRA"], "recent");
