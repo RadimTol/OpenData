@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: histrecent-main
+  cancel-in-progress: false
+
 jobs:
   run-histrecent:
     runs-on: ubuntu-latest
@@ -38,15 +42,12 @@ jobs:
       - name: Run script
         run: Rscript histrecent.R
 
-      - name: Show output files
-        run: |
-          ls -la
-          find . -maxdepth 2 -type f -name "*.csv"
-
       - name: Commit and push CSV
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add histrecent.csv
-          git diff --cached --quiet || git commit -m "Update histrecent.csv"
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "Update histrecent.csv"
+          git pull --rebase origin main
+          git push origin main
