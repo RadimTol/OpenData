@@ -490,7 +490,7 @@ async function load() {
       `Histogram hodnot včera (${fmtDateCZOnly(recTime)})`;
 
     render(now, "gridNow", ["T", "Fmax", "SRA1H"], "now");
-    render(rec, "gridRecent", ["T", "Fmax", "SRAden-1"], "recent");
+    render(rec, "gridRecent", ["T", "Fmax", "SRA"], "recent");
   } catch (err) {
     document.getElementById("gridNow").innerHTML =
       `<div class="empty-box">Nepodařilo se načíst nebo zpracovat histnow.csv.<br>Detail: ${err.message}</div>`;
