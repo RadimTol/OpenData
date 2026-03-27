@@ -3,184 +3,94 @@
 suppressPackageStartupMessages({
   library(jsonlite)
   library(dplyr)
-  library(purrr)
-  library(stringr)
   library(tidyr)
   library(readr)
+  library(purrr)
+  library(stringr)
   library(tibble)
 })
 
 base_url <- "https://opendata.chmi.cz/meteorology/climate/historical/data/10min/2025"
-station_id <- "11406"
+station_code_full <- "0-20000-0-11406"
+station_code_out  <- "11406"
 year_value <- 2025L
 output_file <- "ozesource.csv"
 
-f_bins <- c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, Inf)
+# Intervaly
 f_labels <- c("0-1","1-2","2-3","3-4","4-5","5-6","6-7","7-8","8-9","9-10","10+")
-ssv_bins <- c(0, 100, 200, 300, 400, 500, 600, Inf)
-ssv_labels <- c("0-100","100-200","200-300","300-400","400-500","500-600","600+")
-all_interval_labels <- c(f_labels, ssv_labels)
+f_breaks <- c(0,1,2,3,4,5,6,7,8,9,10,Inf)
 
-download_month_file <- function(year_value, month_value, station_id, base_url) {
+ssv_labels <- c("0-100","100-200","200-300","300-400","400-500","500-600","600+")
+ssv_breaks <- c(0,100,200,300,400,500,600,Inf)
+
+extract_values_tbl <- function(raw_json) {
+  # Podle vzorového souboru je struktura:
+  # $data$data$header
+  # $data$data$values
+  vals <- raw_json$data$data$values
+  hdr  <- raw_json$data$data$header
+
+  if (is.null(vals) || length(vals) == 0) {
+    stop("V JSON nebylo nalezeno pole data$data$values.")
+  }
+
+  header_names <- strsplit(hdr, ",", fixed = TRUE)[[1]]
+  header_names <- trimws(header_names)
+
+  tbl <- as_tibble(do.call(rbind, vals), .name_repair = "minimal")
+
+  if (ncol(tbl) != length(header_names)) {
+    stop(sprintf(
+      "Pocet sloupcu v datech (%d) neodpovida hlavicce (%d).",
+      ncol(tbl), length(header_names)
+    ))
+  }
+
+  names(tbl) <- header_names
+  tbl
+}
+
+download_month_json <- function(year_value, month_value, station_code_full, base_url) {
   ym <- sprintf("%04d%02d", as.integer(year_value), as.integer(month_value))
-  file_name <- sprintf("10m-0-20000-0-%s-%s.json", station_id, ym)
+  file_name <- sprintf("10m-0-20000-0-11406-%s.json", ym)
   url <- sprintf("%s/%s", base_url, file_name)
-  dest <- tempfile(fileext = ".json")
+  tmp <- tempfile(fileext = ".json")
 
   ok <- tryCatch({
-    utils::download.file(url, destfile = dest, mode = "wb", quiet = TRUE)
+    utils::download.file(url, tmp, mode = "wb", quiet = TRUE)
     TRUE
   }, error = function(e) {
     message(sprintf("Soubor %s se nepodarilo stahnout: %s", file_name, e$message))
     FALSE
   })
 
-  if (!ok || !file.exists(dest) || is.na(file.info(dest)$size) || file.info(dest)$size <= 0) {
+  if (!ok || !file.exists(tmp) || is.na(file.info(tmp)$size) || file.info(tmp)$size <= 0) {
     return(NULL)
   }
 
-  dest
+  raw_json <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
+  extract_values_tbl(raw_json)
 }
 
-coalesce_name <- function(nms, candidates) {
-  hit <- intersect(candidates, nms)
-  if (length(hit) > 0) hit[[1]] else NA_character_
-}
+assign_interval <- function(val, element) {
+  out <- rep(NA_character_, length(val))
 
-records_to_tibble <- function(records) {
-  if (is.null(records) || length(records) == 0) {
-    return(tibble())
-  }
-
-  # Varianta: seznam pojmenovanych objektu / data frame
-  if (is.data.frame(records)) {
-    df <- as_tibble(records)
-    station_col <- coalesce_name(names(df), c("STATION", "station"))
-    dt_col      <- coalesce_name(names(df), c("DT", "dt", "DATE", "date", "datetime"))
-    element_col <- coalesce_name(names(df), c("ELEMENT", "element"))
-    val_col     <- coalesce_name(names(df), c("VAL", "val", "VALUE", "value"))
-
-    if (!any(is.na(c(station_col, dt_col, element_col, val_col)))) {
-      return(df %>%
-        transmute(
-          STATION = as.character(.data[[station_col]]),
-          DT = as.character(.data[[dt_col]]),
-          ELEMENT = as.character(.data[[element_col]]),
-          VAL = suppressWarnings(as.numeric(.data[[val_col]]))
-        ))
-    }
-  }
-
-  # Varianta: pole poli ve tvaru [STATION, ELEMENT, DT, VAL, ...]
-  if (is.list(records) && length(records) > 0) {
-    rows <- purrr::map(records, function(rec) {
-      if (is.null(rec)) return(NULL)
-
-      if (is.atomic(rec) && length(rec) >= 4) {
-        return(tibble(
-          STATION = as.character(rec[[1]]),
-          ELEMENT = as.character(rec[[2]]),
-          DT = as.character(rec[[3]]),
-          VAL = suppressWarnings(as.numeric(rec[[4]]))
-        ))
-      }
-
-      if (is.list(rec) || is.data.frame(rec)) {
-        one <- records_to_tibble(rec)
-        if (nrow(one) > 0) return(one)
-      }
-
-      NULL
-    })
-
-    rows <- purrr::compact(rows)
-    if (length(rows) > 0) {
-      return(bind_rows(rows))
-    }
-  }
-
-  tibble()
-}
-
-extract_data_section <- function(x) {
-  if (is.null(x)) return(NULL)
-
-  if (is.data.frame(x)) return(x)
-
-  if (is.list(x)) {
-    for (nm in c("data", "result", "results", "features", "items")) {
-      if (!is.null(x[[nm]])) {
-        return(x[[nm]])
-      }
-    }
-  }
-
-  x
-}
-
-read_month_data <- function(path) {
-  raw <- jsonlite::fromJSON(path, simplifyVector = FALSE)
-  payload <- extract_data_section(raw)
-  tbl <- records_to_tibble(payload)
-
-  if (nrow(tbl) == 0) {
-    stop(sprintf(
-      paste(
-        "V souboru %s nebyla nalezena zadna pouzitelna data.",
-        "JSON zrejme neni ve formatu pojmenovanych poli, ale jako pole zaznamu.",
-        "Skript je ted pripraven jak na objektovy format, tak na format [STATION, ELEMENT, DT, VAL, ...]."
-      ),
-      basename(path)
-    ))
-  }
-
-  tbl
-}
-
-parse_dt_fields <- function(dt_char) {
-  x <- str_trim(as.character(dt_char))
-
-  dt_parsed <- suppressWarnings(as.POSIXct(
-    x,
-    tz = "UTC",
-    tryFormats = c(
-      "%Y-%m-%dT%H:%M:%OSZ",
-      "%Y-%m-%dT%H:%M:%SZ",
-      "%Y-%m-%dT%H:%M:%S",
-      "%Y-%m-%d %H:%M:%S",
-      "%Y-%m-%dT%H:%M",
-      "%Y-%m-%d %H:%M",
-      "%Y%m%d%H%M%S",
-      "%Y%m%d%H%M"
-    )
-  ))
-
-  tibble(
-    YEAR = suppressWarnings(as.integer(format(dt_parsed, "%Y"))),
-    MONTH = suppressWarnings(as.integer(format(dt_parsed, "%m"))),
-    TIME = ifelse(is.na(dt_parsed), NA_character_, format(dt_parsed, "%H:%M"))
-  )
-}
-
-assign_interval <- function(value, element) {
-  out <- rep(NA_character_, length(value))
-
-  idx_f <- which(element == "F" & !is.na(value) & value >= 0)
+  idx_f <- which(element == "F" & !is.na(val) & val >= 0)
   if (length(idx_f) > 0) {
     out[idx_f] <- as.character(cut(
-      value[idx_f],
-      breaks = f_bins,
+      val[idx_f],
+      breaks = f_breaks,
       labels = f_labels,
       right = FALSE,
       include.lowest = TRUE
     ))
   }
 
-  idx_ssv <- which(element == "SSV10M" & !is.na(value) & value >= 0)
+  idx_ssv <- which(element == "SSV10M" & !is.na(val) & val >= 0)
   if (length(idx_ssv) > 0) {
     out[idx_ssv] <- as.character(cut(
-      value[idx_ssv],
-      breaks = ssv_bins,
+      val[idx_ssv],
+      breaks = ssv_breaks,
       labels = ssv_labels,
       right = FALSE,
       include.lowest = TRUE
@@ -190,79 +100,89 @@ assign_interval <- function(value, element) {
   out
 }
 
-process_year <- function(year_value = 2025L, station_id = "11406", base_url = base_url) {
-  month_tbls <- vector("list", 12)
+read_year_data <- function(year_value, base_url, station_code_full) {
+  monthly <- vector("list", 12)
 
   for (m in 1:12) {
-    json_path <- download_month_file(year_value, m, station_id, base_url)
-    if (is.null(json_path)) {
-      next
-    }
-
     message(sprintf("Zpracovavam %04d-%02d", year_value, m))
-    month_tbls[[m]] <- read_month_data(json_path)
+    monthly[[m]] <- tryCatch(
+      download_month_json(year_value, m, station_code_full, base_url),
+      error = function(e) {
+        message(sprintf("Mesic %02d preskocen: %s", m, e$message))
+        NULL
+      }
+    )
   }
 
-  data_all <- bind_rows(month_tbls)
+  bind_rows(monthly)
+}
 
-  if (nrow(data_all) == 0) {
-    stop("Nepodarilo se nacist zadna data.")
+prepare_output <- function(df, station_code_full, station_code_out, year_value) {
+  required_cols <- c("STATION", "ELEMENT", "DT", "VAL")
+  missing_cols <- setdiff(required_cols, names(df))
+  if (length(missing_cols) > 0) {
+    stop(sprintf("Chybi sloupce: %s", paste(missing_cols, collapse = ", ")))
   }
 
-  dt_parts <- parse_dt_fields(data_all$DT)
-
-  data_all <- bind_cols(data_all, dt_parts) %>%
-    mutate(
-      STATION = str_replace(as.character(STATION), "^0-20000-0-", "")
+  df2 <- df %>%
+    transmute(
+      STATION = as.character(STATION),
+      ELEMENT = as.character(ELEMENT),
+      DT = as.character(DT),
+      VAL = suppressWarnings(as.numeric(VAL))
     ) %>%
     filter(
-      STATION == station_id,
-      YEAR == year_value,
+      STATION == station_code_full,
       ELEMENT %in% c("F", "SSV10M")
     ) %>%
     mutate(
+      DT_PARSED = as.POSIXct(DT, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+      YEAR = suppressWarnings(as.integer(format(DT_PARSED, "%Y"))),
+      MONTH = suppressWarnings(as.integer(format(DT_PARSED, "%m"))),
+      TIME = ifelse(is.na(DT_PARSED), NA_character_, format(DT_PARSED, "%H:%M")),
+      STATION = station_code_out,
       INTERVAL = assign_interval(VAL, ELEMENT)
     ) %>%
-    filter(!is.na(INTERVAL), !is.na(TIME), !is.na(MONTH))
+    filter(
+      YEAR == year_value,
+      !is.na(MONTH),
+      !is.na(TIME),
+      !is.na(INTERVAL)
+    )
 
-  if (nrow(data_all) == 0) {
-    stop("Po filtraci nezustala zadna data pro ELEMENT = F nebo SSV10M.")
+  if (nrow(df2) == 0) {
+    stop("Po filtraci nezustala zadna data pro ELEMENT F nebo SSV10M.")
   }
 
-  out <- data_all %>%
+  # Vystup v dlouhem formatu: jedna radka = jeden interval a jeho pocet
+  out <- df2 %>%
     count(STATION, YEAR, MONTH, TIME, ELEMENT, INTERVAL, name = "COUNT") %>%
-    tidyr::complete(
-      STATION,
-      YEAR,
-      MONTH,
-      TIME,
-      ELEMENT,
-      INTERVAL = all_interval_labels,
-      fill = list(COUNT = 0)
-    ) %>%
-    filter(
-      (ELEMENT == "F" & INTERVAL %in% f_labels) |
-      (ELEMENT == "SSV10M" & INTERVAL %in% ssv_labels)
-    ) %>%
-    tidyr::pivot_wider(
-      names_from = INTERVAL,
-      values_from = COUNT,
-      values_fill = 0
-    ) %>%
-    arrange(STATION, YEAR, MONTH, TIME, ELEMENT)
+    arrange(STATION, YEAR, MONTH, TIME, ELEMENT, INTERVAL) %>%
+    rename(BIN = INTERVAL)
 
-  ordered_cols <- c(
-    "STATION", "YEAR", "MONTH", "TIME", "ELEMENT",
-    f_labels, ssv_labels
-  )
-  existing_cols <- intersect(ordered_cols, names(out))
-  remaining_cols <- setdiff(names(out), existing_cols)
-
-  out %>%
-    select(all_of(existing_cols), all_of(remaining_cols))
+  out
 }
 
-result <- process_year(year_value = year_value, station_id = station_id, base_url = base_url)
-readr::write_excel_csv(result, output_file)
+main <- function() {
+  raw_df <- read_year_data(
+    year_value = year_value,
+    base_url = base_url,
+    station_code_full = station_code_full
+  )
 
-message(sprintf("Hotovo. Vystup ulozen do %s", output_file))
+  if (nrow(raw_df) == 0) {
+    stop("Nepodarilo se nacist zadna data.")
+  }
+
+  result <- prepare_output(
+    df = raw_df,
+    station_code_full = station_code_full,
+    station_code_out = station_code_out,
+    year_value = year_value
+  )
+
+  readr::write_excel_csv(result, output_file)
+  message(sprintf("Hotovo. Vystup ulozen do %s", output_file))
+}
+
+main()
