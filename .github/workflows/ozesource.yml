@@ -32,7 +32,7 @@ jobs:
 
       - name: Run ozesource script
         run: |
-          Rscript ozesource-fixed.R
+          Rscript ozesource.R
 
       - name: Commit and push ozesource.csv
         run: |
