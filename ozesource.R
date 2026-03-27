@@ -16,17 +16,14 @@ station_code_out  <- "11406"
 year_value <- 2025L
 output_file <- "ozesource.csv"
 
-# Intervaly
-f_labels <- c("0-1","1-2","2-3","3-4","4-5","5-6","6-7","7-8","8-9","9-10","10+")
+# Neprekrývající se intervaly
+f_labels <- c("0-<1","1-<2","2-<3","3-<4","4-<5","5-<6","6-<7","7-<8","8-<9","9-<10","10+")
 f_breaks <- c(0,1,2,3,4,5,6,7,8,9,10,Inf)
 
-ssv_labels <- c("0-100","100-200","200-300","300-400","400-500","500-600","600+")
+ssv_labels <- c("0-99","100-199","200-299","300-399","400-499","500-599","600+")
 ssv_breaks <- c(0,100,200,300,400,500,600,Inf)
 
 extract_values_tbl <- function(raw_json) {
-  # Podle vzorového souboru je struktura:
-  # $data$data$header
-  # $data$data$values
   vals <- raw_json$data$data$values
   hdr  <- raw_json$data$data$header
 
@@ -154,7 +151,6 @@ prepare_output <- function(df, station_code_full, station_code_out, year_value) 
     stop("Po filtraci nezustala zadna data pro ELEMENT F nebo SSV10M.")
   }
 
-  # Vystup v dlouhem formatu: jedna radka = jeden interval a jeho pocet
   out <- df2 %>%
     count(STATION, YEAR, MONTH, TIME, ELEMENT, INTERVAL, name = "COUNT") %>%
     arrange(STATION, YEAR, MONTH, TIME, ELEMENT, INTERVAL) %>%
