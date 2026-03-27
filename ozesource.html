@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OZE Source – měsíční přehled</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.4;
+      color: #222;
+    }
+    h1 {
+      margin: 0 0 8px 0;
+    }
+    .subtitle {
+      color: #555;
+      margin-bottom: 18px;
+    }
+    .filters {
+      display: flex;
+      gap: 16px;
+      align-items: end;
+      flex-wrap: wrap;
+      margin: 0 0 20px 0;
+      padding: 14px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+    .filter-block label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    select {
+      min-width: 140px;
+      padding: 7px 10px;
+      font-size: 14px;
+    }
+    .status {
+      margin: 0 0 16px 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f5f5f5;
+      color: #444;
+    }
+    .status.error {
+      background: #fff1f1;
+      color: #8a1f1f;
+      border: 1px solid #f0c7c7;
+    }
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .chart-card {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 10px;
+      background: #fff;
+    }
+    .chart-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 4px 8px 8px 8px;
+    }
+    .footer-note {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #666;
+    }
+    @media (max-width: 1000px) {
+      .charts {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>OZE Source – měsíční přehled</h1>
+  <div class="subtitle">
+    Dashboard načítá soubor <strong>ozesource.csv</strong> ze stejného adresáře.
+    Pro vybraný <strong>YEAR</strong> a <strong>MONTH</strong> zobrazí dva grafy vedle sebe
+    pro <strong>ELEMENT = F</strong> a <strong>ELEMENT = SSV10M</strong>.
+  </div>
+
+  <div id="status" class="status">Načítám ozesource.csv…</div>
+
+  <div class="filters">
+    <div class="filter-block">
+      <label for="yearFilter">Rok</label>
+      <select id="yearFilter"></select>
+    </div>
+    <div class="filter-block">
+      <label for="monthFilter">Měsíc</label>
+      <select id="monthFilter"></select>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-card">
+      <div class="chart-title">ELEMENT = F</div>
+      <div id="chartF"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">ELEMENT = SSV10M</div>
+      <div id="chartSSV10M"></div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Soubor funguje nejlépe při publikaci přes GitHub Pages nebo jiný web server.
+    Při otevření čistě lokálního HTML souboru v prohlížeči může načítání CSV blokovat zabezpečení prohlížeče.
+  </div>
+
+  <script>
+    const CSV_FILE = "ozesource.csv";
+    const statusEl = document.getElementById("status");
+
+    const binOrder = {
+      F: ["0-1","1-2","2-3","3-4","4-5","5-6","6-7","7-8","8-9","9-10","10+"],
+      SSV10M: ["0-100","100-200","200-300","300-400","400-500","500-600","600+"]
+    };
+
+    let records = [];
+    let years = [];
+    let months = [];
+    let allTimes = [];
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.className = isError ? "status error" : "status";
+    }
+
+    function monthLabel(monthNumber) {
+      return String(monthNumber).padStart(2, "0");
+    }
+
+    function timeToMinutes(t) {
+      if (!t || !String(t).includes(":")) return Number.MAX_SAFE_INTEGER;
+      const parts = String(t).split(":");
+      return Number(parts[0]) * 60 + Number(parts[1]);
+    }
+
+    function uniqueSorted(values, sortFn) {
+      return [...new Set(values)].sort(sortFn);
+    }
+
+    function fillSelect(selectId, values, formatter = v => v) {
+      const el = document.getElementById(selectId);
+      el.innerHTML = "";
+      values.forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = formatter(v);
+        el.appendChild(opt);
+      });
+    }
+
+    function normalizeRow(row) {
+      return {
+        STATION: String(row.STATION ?? "").trim(),
+        YEAR: Number(row.YEAR),
+        MONTH: Number(row.MONTH),
+        TIME: String(row.TIME ?? "").trim(),
+        ELEMENT: String(row.ELEMENT ?? "").trim(),
+        BIN: String(row.BIN ?? "").trim(),
+        COUNT: Number(row.COUNT ?? 0)
+      };
+    }
+
+    function buildMatrix(filteredRows, element) {
+      const bins = binOrder[element] || uniqueSorted(
+        filteredRows.filter(r => r.ELEMENT === element).map(r => r.BIN),
+        (a, b) => a.localeCompare(b, "cs")
+      );
+
+      const lookup = new Map();
+      filteredRows
+        .filter(r => r.ELEMENT === element)
+        .forEach(r => {
+          lookup.set(`${r.BIN}|||${r.TIME}`, Number(r.COUNT) || 0);
+        });
+
+      const z = bins.map(bin => allTimes.map(time => lookup.get(`${bin}|||${time}`) ?? 0));
+      return { bins, times: allTimes, z };
+    }
+
+    function plotElement(targetId, element, year, month) {
+      const selected = records.filter(r => r.YEAR === Number(year) && r.MONTH === Number(month));
+      const matrix = buildMatrix(selected, element);
+
+      Plotly.newPlot(targetId, [{
+        type: "heatmap",
+        x: matrix.times,
+        y: matrix.bins,
+        z: matrix.z,
+        hovertemplate:
+          "Čas: %{x}<br>" +
+          "Interval: %{y}<br>" +
+          "Počet: %{z}<extra></extra>"
+      }], {
+        title: `Rok ${year}, měsíc ${monthLabel(month)}`,
+        margin: { t: 50, r: 20, b: 90, l: 90 },
+        xaxis: {
+          title: "TIME",
+          tickangle: -45,
+          automargin: true
+        },
+        yaxis: {
+          title: "BIN",
+          automargin: true
+        }
+      }, {
+        responsive: true,
+        displaylogo: false
+      });
+    }
+
+    function renderCharts() {
+      const year = document.getElementById("yearFilter").value;
+      const month = document.getElementById("monthFilter").value;
+
+      plotElement("chartF", "F", year, month);
+      plotElement("chartSSV10M", "SSV10M", year, month);
+
+      const selectedCount = records.filter(r => r.YEAR === Number(year) && r.MONTH === Number(month)).length;
+      setStatus(`Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Zobrazen je rok ${year}, měsíc ${monthLabel(month)}. Řádků pro výběr: ${selectedCount.toLocaleString("cs-CZ")}.`);
+    }
+
+    function initializeFilters() {
+      years = uniqueSorted(records.map(r => r.YEAR).filter(Number.isFinite), (a, b) => a - b);
+      months = uniqueSorted(records.map(r => r.MONTH).filter(Number.isFinite), (a, b) => a - b);
+      allTimes = uniqueSorted(records.map(r => r.TIME).filter(Boolean), (a, b) => timeToMinutes(a) - timeToMinutes(b));
+
+      fillSelect("yearFilter", years);
+      fillSelect("monthFilter", months, monthLabel);
+
+      document.getElementById("yearFilter").addEventListener("change", renderCharts);
+      document.getElementById("monthFilter").addEventListener("change", renderCharts);
+    }
+
+    function loadCsv() {
+      Papa.parse(CSV_FILE, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          records = (results.data || [])
+            .map(normalizeRow)
+            .filter(r =>
+              Number.isFinite(r.YEAR) &&
+              Number.isFinite(r.MONTH) &&
+              r.TIME &&
+              r.ELEMENT &&
+              r.BIN &&
+              Number.isFinite(r.COUNT)
+            );
+
+          if (!records.length) {
+            setStatus("Soubor ozesource.csv byl načten, ale neobsahuje použitelná data.", true);
+            return;
+          }
+
+          initializeFilters();
+          renderCharts();
+        },
+        error: function(error) {
+          setStatus(`Nepodařilo se načíst ${CSV_FILE}: ${error.message}`, true);
+        }
+      });
+    }
+
+    loadCsv();
+  </script>
+</body>
+</html>
