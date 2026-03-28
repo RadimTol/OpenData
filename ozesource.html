@@ -192,29 +192,47 @@
     }
 
     function plotElement(targetId, element, year, month) {
-      const selected = records.filter(r => r.YEAR === Number(year) && r.MONTH === Number(month));
-      const matrix = buildMatrix(selected, element);
+      const selected = records.filter(
+        r => r.YEAR === Number(year) && r.MONTH === Number(month) && r.ELEMENT === element
+      );
 
-      Plotly.newPlot(targetId, [{
-        type: "heatmap",
-        x: matrix.times,
-        y: matrix.bins,
-        z: matrix.z,
-        hovertemplate:
-          "Čas: %{x}<br>" +
-          "Interval: %{y}<br>" +
-          "Počet: %{z}<extra></extra>"
-      }], {
+      const traces = (binOrder[element] || [])
+        .map(bin => {
+          const rows = selected
+            .filter(r => r.BIN === bin)
+            .sort((a, b) => timeToMinutes(a.TIME) - timeToMinutes(b.TIME));
+
+          return {
+            type: "scatter",
+            mode: "lines+markers",
+            name: bin,
+            x: rows.map(r => r.TIME),
+            y: rows.map(r => r.COUNT),
+            hovertemplate:
+              "Čas: %{x}<br>" +
+              "Počet: %{y}<br>" +
+              "BIN: " + bin + "<extra></extra>"
+          };
+        })
+        .filter(trace => trace.x.length > 0);
+
+      Plotly.newPlot(targetId, traces, {
         title: `Rok ${year}, měsíc ${monthLabel(month)}`,
-        margin: { t: 50, r: 20, b: 90, l: 90 },
+        margin: { t: 50, r: 20, b: 90, l: 70 },
         xaxis: {
           title: "TIME",
           tickangle: -45,
-          automargin: true
+          automargin: true,
+          categoryorder: "array",
+          categoryarray: allTimes
         },
         yaxis: {
-          title: "BIN",
+          title: "Počet",
           automargin: true
+        },
+        legend: {
+          title: { text: "BIN" },
+          orientation: "v"
         }
       }, {
         responsive: true,
