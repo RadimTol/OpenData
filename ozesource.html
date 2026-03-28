@@ -13,13 +13,8 @@
       line-height: 1.4;
       color: #222;
     }
-    h1 {
-      margin: 0 0 8px 0;
-    }
-    .subtitle {
-      color: #555;
-      margin-bottom: 18px;
-    }
+    h1 { margin: 0 0 8px 0; }
+    .subtitle { color: #555; margin-bottom: 18px; }
     .filters {
       display: flex;
       gap: 16px;
@@ -75,9 +70,7 @@
       color: #666;
     }
     @media (max-width: 1000px) {
-      .charts {
-        grid-template-columns: 1fr;
-      }
+      .charts { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -85,7 +78,7 @@
   <h1>OZE Source – měsíční přehled</h1>
   <div class="subtitle">
     Dashboard načítá soubor <strong>ozesource.csv</strong> ze stejného adresáře.
-    Pro vybraný <strong>YEAR</strong> a <strong>MONTH</strong> zobrazí dva grafy vedle sebe
+    Pro vybraný <strong>YEAR</strong> a <strong>MONTH</strong> zobrazí dva skládané sloupcové grafy
     pro <strong>ELEMENT = F</strong> a <strong>ELEMENT = SSV10M</strong>.
   </div>
 
@@ -174,50 +167,35 @@
       };
     }
 
-    function buildMatrix(filteredRows, element) {
-      const bins = binOrder[element] || uniqueSorted(
-        filteredRows.filter(r => r.ELEMENT === element).map(r => r.BIN),
-        (a, b) => a.localeCompare(b, "cs")
-      );
-
-      const lookup = new Map();
-      filteredRows
-        .filter(r => r.ELEMENT === element)
-        .forEach(r => {
-          lookup.set(`${r.BIN}|||${r.TIME}`, Number(r.COUNT) || 0);
-        });
-
-      const z = bins.map(bin => allTimes.map(time => lookup.get(`${bin}|||${time}`) ?? 0));
-      return { bins, times: allTimes, z };
-    }
-
-    function plotElement(targetId, element, year, month) {
+    function buildTraces(element, year, month) {
       const selected = records.filter(
         r => r.YEAR === Number(year) && r.MONTH === Number(month) && r.ELEMENT === element
       );
 
-      const traces = (binOrder[element] || [])
-        .map(bin => {
-          const rows = selected
-            .filter(r => r.BIN === bin)
-            .sort((a, b) => timeToMinutes(a.TIME) - timeToMinutes(b.TIME));
+      const lookup = new Map();
+      selected.forEach(r => {
+        lookup.set(`${r.TIME}|||${r.BIN}`, Number(r.COUNT) || 0);
+      });
 
-          return {
-            type: "scatter",
-            mode: "lines+markers",
-            name: bin,
-            x: rows.map(r => r.TIME),
-            y: rows.map(r => r.COUNT),
-            hovertemplate:
-              "Čas: %{x}<br>" +
-              "Počet: %{y}<br>" +
-              "BIN: " + bin + "<extra></extra>"
-          };
-        })
-        .filter(trace => trace.x.length > 0);
+      return (binOrder[element] || [])
+        .map(bin => ({
+          type: "bar",
+          name: bin,
+          x: allTimes,
+          y: allTimes.map(time => lookup.get(`${time}|||${bin}`) ?? 0),
+          hovertemplate:
+            "Čas: %{x}<br>" +
+            "Počet: %{y}<br>" +
+            "BIN: " + bin + "<extra></extra>"
+        }));
+    }
+
+    function plotElement(targetId, element, year, month) {
+      const traces = buildTraces(element, year, month);
 
       Plotly.newPlot(targetId, traces, {
         title: `Rok ${year}, měsíc ${monthLabel(month)}`,
+        barmode: "stack",
         margin: { t: 50, r: 20, b: 90, l: 70 },
         xaxis: {
           title: "TIME",
