@@ -16,13 +16,6 @@ station_code_out  <- "11406"
 year_value <- 2025L
 output_file <- "ozesource.csv"
 
-# Neprekrývající se intervaly
-f_labels <- c("0-<1","1-<2","2-<3","3-<4","4-<5","5-<6","6-<7","7-<8","8-<9","9-<10","10+")
-f_breaks <- c(0,1,2,3,4,5,6,7,8,9,10,Inf)
-
-ssv_labels <- c("0-99","100-199","200-299","300-399","400-499","500-599","600+")
-ssv_breaks <- c(0,100,200,300,400,500,600,Inf)
-
 extract_values_tbl <- function(raw_json) {
   vals <- raw_json$data$data$values
   hdr  <- raw_json$data$data$header
@@ -69,34 +62,6 @@ download_month_json <- function(year_value, month_value, station_code_full, base
   extract_values_tbl(raw_json)
 }
 
-assign_interval <- function(val, element) {
-  out <- rep(NA_character_, length(val))
-
-  idx_f <- which(element == "F" & !is.na(val) & val >= 0)
-  if (length(idx_f) > 0) {
-    out[idx_f] <- as.character(cut(
-      val[idx_f],
-      breaks = f_breaks,
-      labels = f_labels,
-      right = FALSE,
-      include.lowest = TRUE
-    ))
-  }
-
-  idx_ssv <- which(element == "SSV10M" & !is.na(val) & val >= 0)
-  if (length(idx_ssv) > 0) {
-    out[idx_ssv] <- as.character(cut(
-      val[idx_ssv],
-      breaks = ssv_breaks,
-      labels = ssv_labels,
-      right = FALSE,
-      include.lowest = TRUE
-    ))
-  }
-
-  out
-}
-
 read_year_data <- function(year_value, base_url, station_code_full) {
   monthly <- vector("list", 12)
 
@@ -136,15 +101,14 @@ prepare_output <- function(df, station_code_full, station_code_out, year_value) 
       DT_PARSED = as.POSIXct(DT, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
       YEAR = suppressWarnings(as.integer(format(DT_PARSED, "%Y"))),
       MONTH = suppressWarnings(as.integer(format(DT_PARSED, "%m"))),
-      TIME = ifelse(is.na(DT_PARSED), NA_character_, format(DT_PARSED, "%H:%M")),
-      STATION = station_code_out,
-      INTERVAL = assign_interval(VAL, ELEMENT)
+      TIME = ifelse(is.na(DT_PARSED), NA_character_, format(DT_PARSED, "%H:00")),
+      STATION = station_code_out
     ) %>%
     filter(
       YEAR == year_value,
       !is.na(MONTH),
       !is.na(TIME),
-      !is.na(INTERVAL)
+      !is.na(VAL)
     )
 
   if (nrow(df2) == 0) {
@@ -152,14 +116,13 @@ prepare_output <- function(df, station_code_full, station_code_out, year_value) 
   }
 
   out <- df2 %>%
-    group_by(STATION, YEAR, MONTH, TIME, ELEMENT, INTERVAL) %>%
+    group_by(STATION, YEAR, MONTH, TIME, ELEMENT) %>%
     summarise(
       COUNT = n(),
       AVG = round(mean(VAL, na.rm = TRUE), 3),
       .groups = "drop"
     ) %>%
-    arrange(STATION, YEAR, MONTH, TIME, ELEMENT, INTERVAL) %>%
-    rename(BIN = INTERVAL)
+    arrange(STATION, YEAR, MONTH, TIME, ELEMENT)
 
   out
 }
