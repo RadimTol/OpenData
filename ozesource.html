@@ -3,142 +3,418 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OZE Source – měsíční přehled</title>
-
+  <title>OZE Source – průměrné hodnoty</title>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
   <style>
-    body { font-family: Arial; margin: 20px; }
-    .filters { display:flex; gap:15px; margin-bottom:20px; }
-    .charts { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-    @media (max-width:1000px){ .charts { grid-template-columns:1fr; } }
+    :root{
+      --chmi-blue:#0b5ea8;
+      --chmi-blue-dark:#0a4a82;
+      --chmi-blue-light:#eaf3fb;
+      --chmi-border:#c7d9eb;
+      --chmi-text:#17324d;
+      --card-bg:#ffffff;
+      --page-bg:#f4f8fb;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #eef5fb 0%, #f8fbfe 100%);
+      color:var(--chmi-text);
+    }
+    .page{
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero{
+      background: linear-gradient(135deg, var(--chmi-blue) 0%, var(--chmi-blue-dark) 100%);
+      color:#fff;
+      border-radius:18px;
+      padding:24px 28px;
+      box-shadow: 0 10px 24px rgba(11,94,168,.18);
+      margin-bottom:20px;
+    }
+    .hero h1{
+      margin:0 0 8px 0;
+      font-size:30px;
+    }
+    .hero p{
+      margin:0;
+      font-size:15px;
+      line-height:1.5;
+      max-width:980px;
+      color:rgba(255,255,255,.92);
+    }
+    .status{
+      margin: 0 0 16px 0;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #fff;
+      border:1px solid var(--chmi-border);
+      color:#36506a;
+      box-shadow: 0 3px 10px rgba(0,0,0,.03);
+    }
+    .status.error{
+      background:#fff3f3;
+      color:#8a1f1f;
+      border-color:#efc3c3;
+    }
+    .controls{
+      background: var(--card-bg);
+      border:1px solid var(--chmi-border);
+      border-radius:16px;
+      padding:18px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:16px;
+      align-items:flex-end;
+      margin-bottom:20px;
+      box-shadow: 0 4px 14px rgba(11,94,168,.05);
+    }
+    .filter-block label{
+      display:block;
+      font-size:13px;
+      font-weight:700;
+      margin-bottom:6px;
+      color:var(--chmi-blue-dark);
+      text-transform:uppercase;
+      letter-spacing:.03em;
+    }
+    select, button{
+      min-width:160px;
+      padding:10px 12px;
+      font-size:14px;
+      border-radius:10px;
+      border:1px solid var(--chmi-border);
+      background:#fff;
+      color:var(--chmi-text);
+    }
+    button{
+      cursor:pointer;
+      background:var(--chmi-blue);
+      color:#fff;
+      border-color:var(--chmi-blue);
+      font-weight:700;
+      min-width:auto;
+    }
+    button.secondary{
+      background:#fff;
+      color:var(--chmi-blue-dark);
+      border-color:var(--chmi-border);
+    }
+    button:hover{
+      filter:brightness(0.97);
+    }
+    .charts{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:20px;
+    }
+    .chart-card{
+      background:var(--card-bg);
+      border:1px solid var(--chmi-border);
+      border-radius:16px;
+      overflow:hidden;
+      box-shadow: 0 6px 18px rgba(11,94,168,.05);
+    }
+    .chart-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:14px 16px 10px 16px;
+      border-bottom:1px solid #eef4fa;
+      background:linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+    .chart-title{
+      margin:0;
+      font-size:18px;
+      color:var(--chmi-blue-dark);
+    }
+    .chart-toolbar{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .chart{
+      min-height:460px;
+    }
+    .footer-note{
+      margin-top:16px;
+      font-size:13px;
+      color:#5c7389;
+    }
+    @media (max-width: 1100px){
+      .charts{ grid-template-columns:1fr; }
+    }
   </style>
 </head>
-
 <body>
+  <div class="page">
+    <section class="hero">
+      <h1>OZE Source – průměrné hodnoty</h1>
+      <p>
+        Dashboard načítá soubor <strong>ozesource.csv</strong> ze stejného adresáře. Pro vybranou
+        <strong>stanici</strong>, <strong>rok</strong> a <strong>měsíc</strong> zobrazuje dva grafy
+        průměrných hodnot <strong>AVG</strong> v čase pro prvky <strong>F</strong> a <strong>SSV10M</strong>.
+      </p>
+    </section>
 
-<h2>OZE Source – průměrné hodnoty</h2>
+    <div id="status" class="status">Načítám ozesource.csv…</div>
 
-<div class="filters">
-  <div>
-    <label>Stanice</label><br>
-    <select id="stationFilter"></select>
+    <section class="controls">
+      <div class="filter-block">
+        <label for="stationFilter">Stanice</label>
+        <select id="stationFilter"></select>
+      </div>
+      <div class="filter-block">
+        <label for="yearFilter">Rok</label>
+        <select id="yearFilter"></select>
+      </div>
+      <div class="filter-block">
+        <label for="monthFilter">Měsíc</label>
+        <select id="monthFilter"></select>
+      </div>
+      <div class="filter-block">
+        <button id="exportAllBtn" type="button">Export obou grafů do PNG</button>
+      </div>
+    </section>
+
+    <section class="charts">
+      <article class="chart-card">
+        <div class="chart-header">
+          <h2 class="chart-title">ELEMENT = F</h2>
+          <div class="chart-toolbar">
+            <button class="secondary" type="button" onclick="exportChart('chartF','graf_F')">PNG</button>
+          </div>
+        </div>
+        <div id="chartF" class="chart"></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="chart-header">
+          <h2 class="chart-title">ELEMENT = SSV10M</h2>
+          <div class="chart-toolbar">
+            <button class="secondary" type="button" onclick="exportChart('chartSSV10M','graf_SSV10M')">PNG</button>
+          </div>
+        </div>
+        <div id="chartSSV10M" class="chart"></div>
+      </article>
+    </section>
+
+    <div class="footer-note">
+      Stránka funguje nejlépe při publikaci přes GitHub Pages nebo jiný web server. Při otevření lokálního HTML
+      souboru v prohlížeči může být načítání CSV blokované bezpečnostní politikou prohlížeče.
+    </div>
   </div>
-  <div>
-    <label>Rok</label><br>
-    <select id="yearFilter"></select>
-  </div>
-  <div>
-    <label>Měsíc</label><br>
-    <select id="monthFilter"></select>
-  </div>
-</div>
 
-<div class="charts">
-  <div id="chartF"></div>
-  <div id="chartSSV"></div>
-</div>
+  <script>
+    const CSV_FILE = "ozesource.csv";
+    const statusEl = document.getElementById("status");
 
-<script>
-const CSV_FILE = "ozesource.csv";
+    let records = [];
+    let stations = [];
+    let years = [];
+    let months = [];
+    let allTimes = [];
 
-let records = [];
-let allTimes = [];
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.className = isError ? "status error" : "status";
+    }
 
-function normalize(row){
-  return {
-    STATION: row.STATION,
-    YEAR: Number(row.YEAR),
-    MONTH: Number(row.MONTH),
-    TIME: row.TIME,
-    ELEMENT: row.ELEMENT,
-    AVG: Number(row.AVG)
-  };
-}
+    function monthLabel(monthNumber) {
+      return String(monthNumber).padStart(2, "0");
+    }
 
-function unique(arr){
-  return [...new Set(arr)];
-}
+    function timeToMinutes(t) {
+      if (!t || !String(t).includes(":")) return Number.MAX_SAFE_INTEGER;
+      const parts = String(t).split(":");
+      return Number(parts[0]) * 60 + Number(parts[1]);
+    }
 
-function fill(id, values){
-  const el = document.getElementById(id);
-  el.innerHTML = "";
-  values.forEach(v=>{
-    const o=document.createElement("option");
-    o.value=v;
-    o.textContent=v;
-    el.appendChild(o);
-  });
-}
+    function uniqueSorted(values, sortFn) {
+      return [...new Set(values)].sort(sortFn);
+    }
 
-function plot(element, target){
-  const s = document.getElementById("stationFilter").value;
-  const y = Number(document.getElementById("yearFilter").value);
-  const m = Number(document.getElementById("monthFilter").value);
+    function fillSelect(selectId, values, formatter = v => v) {
+      const el = document.getElementById(selectId);
+      el.innerHTML = "";
+      values.forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = formatter(v);
+        el.appendChild(opt);
+      });
+    }
 
-  const data = records.filter(r =>
-    r.STATION===s &&
-    r.YEAR===y &&
-    r.MONTH===m &&
-    r.ELEMENT===element
-  );
+    function normalizeRow(row) {
+      return {
+        STATION: String(row.STATION ?? "").trim(),
+        YEAR: Number(row.YEAR),
+        MONTH: Number(row.MONTH),
+        TIME: String(row.TIME ?? "").trim(),
+        ELEMENT: String(row.ELEMENT ?? "").trim(),
+        COUNT: Number(row.COUNT ?? 0),
+        AVG: Number(row.AVG ?? NaN)
+      };
+    }
 
-  const map = new Map();
-  data.forEach(r=> map.set(r.TIME, r.AVG));
+    function buildSeries(element, station, year, month) {
+      const selected = records.filter(
+        r =>
+          r.STATION === String(station) &&
+          r.YEAR === Number(year) &&
+          r.MONTH === Number(month) &&
+          r.ELEMENT === element
+      );
 
-  const yvals = allTimes.map(t => map.get(t) ?? null);
+      const avgByTime = new Map();
+      selected.forEach(r => {
+        avgByTime.set(r.TIME, Number.isFinite(r.AVG) ? r.AVG : null);
+      });
 
-  Plotly.newPlot(target, [{
-    x: allTimes,
-    y: yvals,
-    mode: "lines+markers",
-    type: "scatter"
-  }], {
-    title: element,
-    xaxis:{ title:"TIME", tickangle:-45 },
-    yaxis:{ title:"AVG" }
-  });
-}
+      return {
+        x: allTimes,
+        y: allTimes.map(time => avgByTime.get(time) ?? null)
+      };
+    }
 
-function render(){
-  plot("F","chartF");
-  plot("SSV10M","chartSSV");
-}
+    function plotElement(targetId, element, station, year, month) {
+      const series = buildSeries(element, station, year, month);
 
-function init(){
-  const stations = unique(records.map(r=>r.STATION)).sort();
-  const years = unique(records.map(r=>r.YEAR)).sort();
-  const months = unique(records.map(r=>r.MONTH)).sort();
+      Plotly.newPlot(targetId, [{
+        type: "scatter",
+        mode: "lines+markers",
+        x: series.x,
+        y: series.y,
+        line: {
+          width: 3
+        },
+        marker: {
+          size: 7
+        },
+        hovertemplate:
+          "Čas: %{x}<br>" +
+          "AVG: %{y:.3f}<extra></extra>"
+      }], {
+        title: `Stanice ${station}, rok ${year}, měsíc ${monthLabel(month)}`,
+        paper_bgcolor: "#ffffff",
+        plot_bgcolor: "#fbfdff",
+        margin: { t: 56, r: 24, b: 88, l: 72 },
+        xaxis: {
+          title: "TIME",
+          tickangle: -45,
+          automargin: true,
+          categoryorder: "array",
+          categoryarray: allTimes,
+          gridcolor: "#e6eef7",
+          zeroline: false
+        },
+        yaxis: {
+          title: "AVG",
+          automargin: true,
+          gridcolor: "#e6eef7",
+          zeroline: false
+        },
+        font: {
+          family: "Arial, Helvetica, sans-serif",
+          color: "#17324d"
+        }
+      }, {
+        responsive: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ["select2d","lasso2d","autoScale2d","toggleSpikelines"]
+      });
+    }
 
-  allTimes = unique(records.map(r=>r.TIME))
-    .sort((a,b)=>{
-      const [h1]=a.split(":");
-      const [h2]=b.split(":");
-      return h1-h2;
-    });
+    function renderCharts() {
+      const station = document.getElementById("stationFilter").value;
+      const year = document.getElementById("yearFilter").value;
+      const month = document.getElementById("monthFilter").value;
 
-  fill("stationFilter",stations);
-  fill("yearFilter",years);
-  fill("monthFilter",months);
+      plotElement("chartF", "F", station, year, month);
+      plotElement("chartSSV10M", "SSV10M", station, year, month);
 
-  document.getElementById("stationFilter").onchange=render;
-  document.getElementById("yearFilter").onchange=render;
-  document.getElementById("monthFilter").onchange=render;
+      const selectedCount = records.filter(
+        r => r.STATION === String(station) && r.YEAR === Number(year) && r.MONTH === Number(month)
+      ).length;
 
-  render();
-}
+      setStatus(
+        `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Zobrazena je stanice ${station}, ` +
+        `rok ${year}, měsíc ${monthLabel(month)}. Řádků pro výběr: ${selectedCount.toLocaleString("cs-CZ")}.`
+      );
+    }
 
-Papa.parse(CSV_FILE,{
-  download:true,
-  header:true,
-  complete:(res)=>{
-    records = res.data.map(normalize)
-      .filter(r=>r.TIME && !isNaN(r.AVG));
-    init();
-  }
-});
-</script>
+    function initializeFilters() {
+      stations = uniqueSorted(records.map(r => r.STATION).filter(Boolean), (a, b) => a.localeCompare(b, "cs"));
+      years = uniqueSorted(records.map(r => r.YEAR).filter(Number.isFinite), (a, b) => a - b);
+      months = uniqueSorted(records.map(r => r.MONTH).filter(Number.isFinite), (a, b) => a - b);
+      allTimes = uniqueSorted(records.map(r => r.TIME).filter(Boolean), (a, b) => timeToMinutes(a) - timeToMinutes(b));
 
+      fillSelect("stationFilter", stations);
+      fillSelect("yearFilter", years);
+      fillSelect("monthFilter", months, monthLabel);
+
+      document.getElementById("stationFilter").addEventListener("change", renderCharts);
+      document.getElementById("yearFilter").addEventListener("change", renderCharts);
+      document.getElementById("monthFilter").addEventListener("change", renderCharts);
+    }
+
+    async function exportChart(chartId, filenameBase) {
+      const chart = document.getElementById(chartId);
+      await Plotly.downloadImage(chart, {
+        format: "png",
+        filename: filenameBase,
+        width: 1400,
+        height: 900,
+        scale: 2
+      });
+    }
+
+    async function exportBothCharts() {
+      await exportChart("chartF", "graf_F");
+      setTimeout(async () => {
+        await exportChart("chartSSV10M", "graf_SSV10M");
+      }, 500);
+    }
+
+    function loadCsv() {
+      Papa.parse(CSV_FILE, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          records = (results.data || [])
+            .map(normalizeRow)
+            .filter(r =>
+              r.STATION &&
+              Number.isFinite(r.YEAR) &&
+              Number.isFinite(r.MONTH) &&
+              r.TIME &&
+              r.ELEMENT &&
+              Number.isFinite(r.COUNT) &&
+              Number.isFinite(r.AVG)
+            );
+
+          if (!records.length) {
+            setStatus("Soubor ozesource.csv byl načten, ale neobsahuje použitelná data.", true);
+            return;
+          }
+
+          initializeFilters();
+          renderCharts();
+        },
+        error: function(error) {
+          setStatus(`Nepodařilo se načíst ${CSV_FILE}: ${error.message}`, true);
+        }
+      });
+    }
+
+    document.getElementById("exportAllBtn").addEventListener("click", exportBothCharts);
+    loadCsv();
+  </script>
 </body>
 </html>
