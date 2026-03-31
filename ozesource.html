@@ -78,13 +78,18 @@
   <h1>OZE Source – měsíční přehled</h1>
   <div class="subtitle">
     Dashboard načítá soubor <strong>ozesource.csv</strong> ze stejného adresáře.
-    Pro vybraný <strong>YEAR</strong> a <strong>MONTH</strong> zobrazí dva skládané sloupcové grafy
-    pro <strong>ELEMENT = F</strong> a <strong>ELEMENT = SSV10M</strong>.
+    Pro vybranou <strong>STATION</strong>, <strong>YEAR</strong> a <strong>MONTH</strong> zobrazí dva grafy
+    průměru <strong>AVG</strong> v čase pro <strong>ELEMENT = F</strong> a <strong>ELEMENT = SSV10M</strong>.
+    Průměr je počítán přes všechny <strong>BIN</strong> v daném čase.
   </div>
 
   <div id="status" class="status">Načítám ozesource.csv…</div>
 
   <div class="filters">
+    <div class="filter-block">
+      <label for="stationFilter">Stanice</label>
+      <select id="stationFilter"></select>
+    </div>
     <div class="filter-block">
       <label for="yearFilter">Rok</label>
       <select id="yearFilter"></select>
@@ -115,12 +120,8 @@
     const CSV_FILE = "ozesource.csv";
     const statusEl = document.getElementById("status");
 
-    const binOrder = {
-      F: ["0-<1","1-<2","2-<3","3-<4","4-<5","5-<6","6-<7","7-<8","8-<9","9-<10","10+"],
-      SSV10M: ["0-99","100-199","200-299","300-399","400-499","500-599","600+"]
-    };
-
     let records = [];
+    let stations = [];
     let years = [];
     let months = [];
     let allTimes = [];
@@ -163,39 +164,51 @@
         TIME: String(row.TIME ?? "").trim(),
         ELEMENT: String(row.ELEMENT ?? "").trim(),
         BIN: String(row.BIN ?? "").trim(),
-        COUNT: Number(row.COUNT ?? 0)
+        COUNT: Number(row.COUNT ?? 0),
+        AVG: Number(row.AVG ?? 0)
       };
     }
 
-    function buildTraces(element, year, month) {
+    function buildAvgSeries(element, station, year, month) {
       const selected = records.filter(
-        r => r.YEAR === Number(year) && r.MONTH === Number(month) && r.ELEMENT === element
+        r =>
+          r.STATION === String(station) &&
+          r.YEAR === Number(year) &&
+          r.MONTH === Number(month) &&
+          r.ELEMENT === element
       );
 
-      const lookup = new Map();
-      selected.forEach(r => {
-        lookup.set(`${r.TIME}|||${r.BIN}`, Number(r.COUNT) || 0);
+      const avgByTime = new Map();
+
+      allTimes.forEach(time => {
+        const rows = selected.filter(r => r.TIME === time && Number.isFinite(r.AVG));
+        if (!rows.length) {
+          avgByTime.set(time, null);
+        } else {
+          const avg = rows.reduce((sum, r) => sum + Number(r.AVG || 0), 0) / rows.length;
+          avgByTime.set(time, avg);
+        }
       });
 
-      return (binOrder[element] || [])
-        .map(bin => ({
-          type: "bar",
-          name: bin,
-          x: allTimes,
-          y: allTimes.map(time => lookup.get(`${time}|||${bin}`) ?? 0),
-          hovertemplate:
-            "Čas: %{x}<br>" +
-            "Počet: %{y}<br>" +
-            "BIN: " + bin + "<extra></extra>"
-        }));
+      return {
+        x: allTimes,
+        y: allTimes.map(time => avgByTime.get(time))
+      };
     }
 
-    function plotElement(targetId, element, year, month) {
-      const traces = buildTraces(element, year, month);
+    function plotElement(targetId, element, station, year, month) {
+      const series = buildAvgSeries(element, station, year, month);
 
-      Plotly.newPlot(targetId, traces, {
-        title: `Rok ${year}, měsíc ${monthLabel(month)}`,
-        barmode: "stack",
+      Plotly.newPlot(targetId, [{
+        type: "scatter",
+        mode: "lines+markers",
+        x: series.x,
+        y: series.y,
+        hovertemplate:
+          "Čas: %{x}<br>" +
+          "Průměr AVG: %{y:.3f}<extra></extra>"
+      }], {
+        title: `Stanice ${station}, rok ${year}, měsíc ${monthLabel(month)}`,
         margin: { t: 50, r: 20, b: 90, l: 70 },
         xaxis: {
           title: "TIME",
@@ -205,12 +218,8 @@
           categoryarray: allTimes
         },
         yaxis: {
-          title: "Počet",
+          title: "Průměr AVG",
           automargin: true
-        },
-        legend: {
-          title: { text: "BIN" },
-          orientation: "v"
         }
       }, {
         responsive: true,
@@ -219,24 +228,35 @@
     }
 
     function renderCharts() {
+      const station = document.getElementById("stationFilter").value;
       const year = document.getElementById("yearFilter").value;
       const month = document.getElementById("monthFilter").value;
 
-      plotElement("chartF", "F", year, month);
-      plotElement("chartSSV10M", "SSV10M", year, month);
+      plotElement("chartF", "F", station, year, month);
+      plotElement("chartSSV10M", "SSV10M", station, year, month);
 
-      const selectedCount = records.filter(r => r.YEAR === Number(year) && r.MONTH === Number(month)).length;
-      setStatus(`Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Zobrazen je rok ${year}, měsíc ${monthLabel(month)}. Řádků pro výběr: ${selectedCount.toLocaleString("cs-CZ")}.`);
+      const selectedCount = records.filter(
+        r => r.STATION === String(station) && r.YEAR === Number(year) && r.MONTH === Number(month)
+      ).length;
+
+      setStatus(
+        `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. ` +
+        `Zobrazena je stanice ${station}, rok ${year}, měsíc ${monthLabel(month)}. ` +
+        `Řádků pro výběr: ${selectedCount.toLocaleString("cs-CZ")}.`
+      );
     }
 
     function initializeFilters() {
+      stations = uniqueSorted(records.map(r => r.STATION).filter(Boolean), (a, b) => a.localeCompare(b, "cs"));
       years = uniqueSorted(records.map(r => r.YEAR).filter(Number.isFinite), (a, b) => a - b);
       months = uniqueSorted(records.map(r => r.MONTH).filter(Number.isFinite), (a, b) => a - b);
       allTimes = uniqueSorted(records.map(r => r.TIME).filter(Boolean), (a, b) => timeToMinutes(a) - timeToMinutes(b));
 
+      fillSelect("stationFilter", stations);
       fillSelect("yearFilter", years);
       fillSelect("monthFilter", months, monthLabel);
 
+      document.getElementById("stationFilter").addEventListener("change", renderCharts);
       document.getElementById("yearFilter").addEventListener("change", renderCharts);
       document.getElementById("monthFilter").addEventListener("change", renderCharts);
     }
@@ -250,12 +270,14 @@
           records = (results.data || [])
             .map(normalizeRow)
             .filter(r =>
+              r.STATION &&
               Number.isFinite(r.YEAR) &&
               Number.isFinite(r.MONTH) &&
               r.TIME &&
               r.ELEMENT &&
               r.BIN &&
-              Number.isFinite(r.COUNT)
+              Number.isFinite(r.COUNT) &&
+              Number.isFinite(r.AVG)
             );
 
           if (!records.length) {
