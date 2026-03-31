@@ -152,7 +152,12 @@ prepare_output <- function(df, station_code_full, station_code_out, year_value) 
   }
 
   out <- df2 %>%
-    count(STATION, YEAR, MONTH, TIME, ELEMENT, INTERVAL, name = "COUNT") %>%
+    group_by(STATION, YEAR, MONTH, TIME, ELEMENT, INTERVAL) %>%
+    summarise(
+      COUNT = n(),
+      AVG = round(mean(VAL, na.rm = TRUE), 3),
+      .groups = "drop"
+    ) %>%
     arrange(STATION, YEAR, MONTH, TIME, ELEMENT, INTERVAL) %>%
     rename(BIN = INTERVAL)
 
