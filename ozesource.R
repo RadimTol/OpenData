@@ -3,16 +3,14 @@
 suppressPackageStartupMessages({
   library(jsonlite)
   library(dplyr)
-  library(tidyr)
   library(readr)
   library(purrr)
   library(stringr)
   library(tibble)
 })
 
-base_url <- "https://opendata.chmi.cz/meteorology/climate/historical/data/10min/2025"
-station_code_full <- "0-20000-0-11406"
-station_code_out  <- "11406"
+base_metadata_url <- "https://opendata.chmi.cz/meteorology/climate/historical/metadata/meta2.json"
+base_data_url <- "https://opendata.chmi.cz/meteorology/climate/historical/data/10min/2025"
 year_value <- 2025L
 output_file <- "ozesource.csv"
 
@@ -40,17 +38,14 @@ extract_values_tbl <- function(raw_json) {
   tbl
 }
 
-download_month_json <- function(year_value, month_value, station_code_full, base_url) {
-  ym <- sprintf("%04d%02d", as.integer(year_value), as.integer(month_value))
-  file_name <- sprintf("10m-0-20000-0-11406-%s.json", ym)
-  url <- sprintf("%s/%s", base_url, file_name)
+download_json_to_tbl <- function(url) {
   tmp <- tempfile(fileext = ".json")
 
   ok <- tryCatch({
     utils::download.file(url, tmp, mode = "wb", quiet = TRUE)
     TRUE
   }, error = function(e) {
-    message(sprintf("Soubor %s se nepodarilo stahnout: %s", file_name, e$message))
+    message(sprintf("Soubor %s se nepodarilo stahnout: %s", url, e$message))
     FALSE
   })
 
@@ -62,24 +57,80 @@ download_month_json <- function(year_value, month_value, station_code_full, base
   extract_values_tbl(raw_json)
 }
 
-read_year_data <- function(year_value, base_url, station_code_full) {
-  monthly <- vector("list", 12)
+get_target_stations <- function(metadata_url) {
+  meta_tbl <- download_json_to_tbl(metadata_url)
 
-  for (m in 1:12) {
-    message(sprintf("Zpracovavam %04d-%02d", year_value, m))
-    monthly[[m]] <- tryCatch(
-      download_month_json(year_value, m, station_code_full, base_url),
-      error = function(e) {
-        message(sprintf("Mesic %02d preskocen: %s", m, e$message))
-        NULL
-      }
-    )
+  if (is.null(meta_tbl) || nrow(meta_tbl) == 0) {
+    stop("Nepodarilo se nacist metadata meta2.json.")
   }
 
-  bind_rows(monthly)
+  required_cols <- c("WSI", "EG_EL_ABBREVIATION")
+  missing_cols <- setdiff(required_cols, names(meta_tbl))
+  if (length(missing_cols) > 0) {
+    stop(sprintf("V meta2.json chybi sloupce: %s", paste(missing_cols, collapse = ", ")))
+  }
+
+  meta_tbl %>%
+    transmute(
+      WSI = as.character(WSI),
+      EG_EL_ABBREVIATION = as.character(EG_EL_ABBREVIATION)
+    ) %>%
+    filter(EG_EL_ABBREVIATION %in% c("F", "SSV10M")) %>%
+    distinct(WSI, EG_EL_ABBREVIATION) %>%
+    group_by(WSI) %>%
+    summarise(
+      has_F = any(EG_EL_ABBREVIATION == "F"),
+      has_SSV10M = any(EG_EL_ABBREVIATION == "SSV10M"),
+      .groups = "drop"
+    ) %>%
+    filter(has_F, has_SSV10M) %>%
+    pull(WSI) %>%
+    sort()
 }
 
-prepare_output <- function(df, station_code_full, station_code_out, year_value) {
+download_station_month_json <- function(year_value, month_value, station_wsi, base_data_url) {
+  ym <- sprintf("%04d%02d", as.integer(year_value), as.integer(month_value))
+  file_name <- sprintf("10m-%s-%s.json", station_wsi, ym)
+  url <- sprintf("%s/%s", base_data_url, file_name)
+
+  tbl <- tryCatch(
+    download_json_to_tbl(url),
+    error = function(e) {
+      message(sprintf("Stanice %s, mesic %02d preskocen: %s", station_wsi, month_value, e$message))
+      NULL
+    }
+  )
+
+  if (is.null(tbl)) {
+    return(NULL)
+  }
+
+  tbl
+}
+
+read_year_data <- function(year_value, base_data_url, station_wsis) {
+  all_tbls <- vector("list", length(station_wsis) * 12L)
+  idx <- 1L
+
+  for (station_wsi in station_wsis) {
+    message(sprintf("Zpracovavam stanici %s", station_wsi))
+
+    for (m in 1:12) {
+      message(sprintf("  Mesic %04d-%02d", year_value, m))
+      all_tbls[[idx]] <- download_station_month_json(
+        year_value = year_value,
+        month_value = m,
+        station_wsi = station_wsi,
+        base_data_url = base_data_url
+      )
+      idx <- idx + 1L
+    }
+  }
+
+  bind_rows(all_tbls)
+}
+
+prepare_output <- function(df, year_value) {
   required_cols <- c("STATION", "ELEMENT", "DT", "VAL")
   missing_cols <- setdiff(required_cols, names(df))
   if (length(missing_cols) > 0) {
@@ -93,16 +144,12 @@ prepare_output <- function(df, station_code_full, station_code_out, year_value) 
       DT = as.character(DT),
       VAL = suppressWarnings(as.numeric(VAL))
     ) %>%
-    filter(
-      STATION == station_code_full,
-      ELEMENT %in% c("F", "SSV10M")
-    ) %>%
+    filter(ELEMENT %in% c("F", "SSV10M")) %>%
     mutate(
       DT_PARSED = as.POSIXct(DT, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
       YEAR = suppressWarnings(as.integer(format(DT_PARSED, "%Y"))),
       MONTH = suppressWarnings(as.integer(format(DT_PARSED, "%m"))),
-      TIME = ifelse(is.na(DT_PARSED), NA_character_, format(DT_PARSED, "%H:00")),
-      STATION = station_code_out
+      TIME = ifelse(is.na(DT_PARSED), NA_character_, format(DT_PARSED, "%H:00"))
     ) %>%
     filter(
       YEAR == year_value,
@@ -115,7 +162,7 @@ prepare_output <- function(df, station_code_full, station_code_out, year_value) 
     stop("Po filtraci nezustala zadna data pro ELEMENT F nebo SSV10M.")
   }
 
-  out <- df2 %>%
+  df2 %>%
     group_by(STATION, YEAR, MONTH, TIME, ELEMENT) %>%
     summarise(
       COUNT = n(),
@@ -123,15 +170,21 @@ prepare_output <- function(df, station_code_full, station_code_out, year_value) 
       .groups = "drop"
     ) %>%
     arrange(STATION, YEAR, MONTH, TIME, ELEMENT)
-
-  out
 }
 
 main <- function() {
+  station_wsis <- get_target_stations(base_metadata_url)
+
+  if (length(station_wsis) == 0) {
+    stop("V meta2.json nebyly nalezeny zadne stanice s prvky F a SSV10M.")
+  }
+
+  message(sprintf("Nalezeno %d stanic s prvky F a SSV10M.", length(station_wsis)))
+
   raw_df <- read_year_data(
     year_value = year_value,
-    base_url = base_url,
-    station_code_full = station_code_full
+    base_data_url = base_data_url,
+    station_wsis = station_wsis
   )
 
   if (nrow(raw_df) == 0) {
@@ -140,8 +193,6 @@ main <- function() {
 
   result <- prepare_output(
     df = raw_df,
-    station_code_full = station_code_full,
-    station_code_out = station_code_out,
     year_value = year_value
   )
 
