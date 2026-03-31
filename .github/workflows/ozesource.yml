@@ -3,10 +3,8 @@ name: Run ozesource
 on:
   workflow_dispatch:
   schedule:
-    - cron: "10 20 * * *"   # 00:00
-    - cron: "10 1 * * *"    # 03:00
-    - cron: "10 3-18/2 * * *"
-    
+    - cron: "10 10 10 10 *"   # 00:00
+        
 permissions:
   contents: write
 
