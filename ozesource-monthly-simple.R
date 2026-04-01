@@ -9,7 +9,8 @@ suppressPackageStartupMessages({
 
 options(timeout = max(300, getOption("timeout")))
 
-metadata_url <- "https://opendata.chmi.cz/meteorology/climate/historical/metadata/meta2.json"
+metadata2_url <- "https://opendata.chmi.cz/meteorology/climate/historical/metadata/meta2.json"
+metadata1_url <- "https://opendata.chmi.cz/meteorology/climate/historical/metadata/meta1.json"
 monthly_base_url <- "https://opendata.chmi.cz/meteorology/climate/historical/data/monthly"
 output_file <- "ozesource.csv"
 
@@ -56,8 +57,8 @@ download_json_to_tbl <- function(url) {
   extract_values_tbl(raw_json)
 }
 
-get_target_stations <- function(metadata_url) {
-  meta_tbl <- download_json_to_tbl(metadata_url)
+get_target_stations <- function(metadata2_url) {
+  meta_tbl <- download_json_to_tbl(metadata2_url)
 
   if (is.null(meta_tbl) || nrow(meta_tbl) == 0) {
     stop("Nepodarilo se nacist metadata meta2.json.")
@@ -84,6 +85,31 @@ get_target_stations <- function(metadata_url) {
     filter(N == 2) %>%
     pull(WSI) %>%
     sort()
+}
+
+get_station_names <- function(metadata1_url) {
+  meta_tbl <- download_json_to_tbl(metadata1_url)
+
+  if (is.null(meta_tbl) || nrow(meta_tbl) == 0) {
+    stop("Nepodarilo se nacist metadata meta1.json.")
+  }
+
+  required_cols <- c("WSI", "FULL_NAME")
+  missing_cols <- setdiff(required_cols, names(meta_tbl))
+  if (length(missing_cols) > 0) {
+    stop(sprintf("V meta1.json chybi sloupce: %s", paste(missing_cols, collapse = ", ")))
+  }
+
+  meta_tbl %>%
+    transmute(
+      WSI = as.character(WSI),
+      NAME = as.character(FULL_NAME)
+    ) %>%
+    filter(!is.na(WSI), nzchar(WSI)) %>%
+    mutate(
+      NAME = ifelse(is.na(NAME), "", trimws(NAME))
+    ) %>%
+    distinct(WSI, .keep_all = TRUE)
 }
 
 download_station_monthly_json <- function(station_wsi, monthly_base_url) {
@@ -114,7 +140,7 @@ read_all_station_data <- function(station_wsis, monthly_base_url) {
   bind_rows(station_tbls)
 }
 
-prepare_output <- function(df) {
+prepare_output <- function(df, station_names_tbl) {
   required_cols <- c("STATION", "ELEMENT", "YEAR", "MONTH", "TIMEFUNCTION", "MDFUNCTION", "VALUE")
   missing_cols <- setdiff(required_cols, names(df))
   if (length(missing_cols) > 0) {
@@ -142,6 +168,11 @@ prepare_output <- function(df) {
     ) %>%
     select(STATION, YEAR, MONTH, ELEMENT, AVG) %>%
     distinct(STATION, YEAR, MONTH, ELEMENT, .keep_all = TRUE) %>%
+    left_join(station_names_tbl, by = c("STATION" = "WSI")) %>%
+    mutate(
+      NAME = ifelse(is.na(NAME), "", NAME)
+    ) %>%
+    select(STATION, NAME, YEAR, MONTH, ELEMENT, AVG) %>%
     arrange(STATION, YEAR, MONTH, ELEMENT)
 
   if (nrow(out) == 0) {
@@ -152,11 +183,13 @@ prepare_output <- function(df) {
 }
 
 main <- function() {
-  station_wsis <- get_target_stations(metadata_url)
+  station_wsis <- get_target_stations(metadata2_url)
 
   if (length(station_wsis) == 0) {
     stop("V meta2.json nebyly nalezeny zadne stanice s OBS_TYPE=DLY a prvky F i SSV.")
   }
+
+  station_names_tbl <- get_station_names(metadata1_url)
 
   message(sprintf("Nalezeno %d stanic s OBS_TYPE=DLY a prvky F i SSV.", length(station_wsis)))
 
@@ -169,7 +202,7 @@ main <- function() {
     stop("Nepodarilo se nacist zadna mesicni data.")
   }
 
-  result <- prepare_output(raw_df)
+  result <- prepare_output(raw_df, station_names_tbl)
 
   readr::write_excel_csv(result, output_file)
   message(sprintf("Hotovo. Vystup ulozen do %s", output_file))
