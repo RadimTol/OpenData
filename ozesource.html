@@ -34,10 +34,7 @@
       box-shadow: 0 10px 24px rgba(11,94,168,.18);
       margin-bottom:20px;
     }
-    .hero h1{
-      margin:0 0 8px 0;
-      font-size:30px;
-    }
+    .hero h1{ margin:0 0 8px 0; font-size:30px; }
     .hero p{
       margin:0;
       font-size:15px;
@@ -133,9 +130,7 @@
       gap:8px;
       flex-wrap:wrap;
     }
-    .chart{
-      min-height:460px;
-    }
+    .chart{ min-height:460px; }
     .footer-note{
       margin-top:16px;
       font-size:13px;
@@ -152,8 +147,8 @@
       <h1>OZE Source – měsíční hodnoty</h1>
       <p>
         Dashboard načítá soubor <strong>ozesource.csv</strong> ze stejného adresáře. Pro vybranou
-        <strong>stanici</strong>, <strong>rok</strong> a <strong>měsíc</strong> zobrazuje dva grafy
-        hodnot <strong>AVG</strong> pro prvky <strong>F</strong> a <strong>SSV</strong>.
+        <strong>stanici</strong> a <strong>rok</strong> zobrazuje měsíční hodnoty <strong>AVG</strong>
+        pro prvky <strong>F</strong> a <strong>SSV</strong>.
       </p>
     </section>
 
@@ -169,8 +164,7 @@
         <select id="yearFilter"></select>
       </div>
       <div class="filter-block">
-        <label for="monthFilter">Měsíc</label>
-        <select id="monthFilter"></select>
+        <button id="resetBtn" type="button" class="secondary">Reset filtrů</button>
       </div>
       <div class="filter-block">
         <button id="exportAllBtn" type="button">Export obou grafů do PNG</button>
@@ -200,19 +194,25 @@
     </section>
 
     <div class="footer-note">
-      Stránka funguje nejlépe při publikaci přes GitHub Pages nebo jiný web server. Při otevření lokálního HTML
-      souboru v prohlížeči může být načítání CSV blokované bezpečnostní politikou prohlížeče.
+      Filtry Stanice a Rok jsou navzájem provázané. Po výběru stanice se v nabídce Rok zobrazí jen roky,
+      kde má vybraná stanice data. Po výběru roku se v nabídce Stanice zobrazí jen stanice, které mají data v daném roce.
     </div>
   </div>
 
   <script>
     const CSV_FILE = "ozesource.csv";
     const statusEl = document.getElementById("status");
+    const stationFilter = document.getElementById("stationFilter");
+    const yearFilter = document.getElementById("yearFilter");
+
+    const MONTHS = Array.from({length: 12}, (_, i) => i + 1);
 
     let records = [];
-    let stations = [];
-    let years = [];
-    let months = [];
+    let allStations = [];
+    let allYears = [];
+    let currentStation = null;
+    let currentYear = null;
+    let isUpdatingFilters = false;
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
@@ -227,14 +227,16 @@
       return [...new Set(values)].sort(sortFn);
     }
 
-    function fillSelect(selectId, values, formatter = v => v) {
-      const el = document.getElementById(selectId);
-      el.innerHTML = "";
+    function fillSelect(selectEl, values, selectedValue = null, formatter = v => v) {
+      selectEl.innerHTML = "";
       values.forEach(v => {
         const opt = document.createElement("option");
         opt.value = v;
         opt.textContent = formatter(v);
-        el.appendChild(opt);
+        if (String(v) === String(selectedValue)) {
+          opt.selected = true;
+        }
+        selectEl.appendChild(opt);
       });
     }
 
@@ -248,40 +250,121 @@
       };
     }
 
-    function getSelectedRecord(element, station, year, month) {
-      return records.find(
+    function getAvailableYearsForStation(station) {
+      return uniqueSorted(
+        records
+          .filter(r => !station || r.STATION === String(station))
+          .map(r => r.YEAR)
+          .filter(Number.isFinite),
+        (a, b) => a - b
+      );
+    }
+
+    function getAvailableStationsForYear(year) {
+      return uniqueSorted(
+        records
+          .filter(r => !year || r.YEAR === Number(year))
+          .map(r => r.STATION)
+          .filter(Boolean),
+        (a, b) => a.localeCompare(b, "cs")
+      );
+    }
+
+    function syncFilters(changedBy = null) {
+      isUpdatingFilters = true;
+
+      let validStations = allStations.slice();
+      let validYears = allYears.slice();
+
+      if (changedBy === "station" && currentStation) {
+        validYears = getAvailableYearsForStation(currentStation);
+        if (!validYears.includes(Number(currentYear))) {
+          currentYear = validYears[0] ?? null;
+        }
+        validStations = getAvailableStationsForYear(currentYear);
+        if (!validStations.includes(String(currentStation))) {
+          currentStation = validStations[0] ?? null;
+        }
+      } else if (changedBy === "year" && currentYear) {
+        validStations = getAvailableStationsForYear(currentYear);
+        if (!validStations.includes(String(currentStation))) {
+          currentStation = validStations[0] ?? null;
+        }
+        validYears = getAvailableYearsForStation(currentStation);
+        if (!validYears.includes(Number(currentYear))) {
+          currentYear = validYears[0] ?? null;
+        }
+      } else {
+        validStations = getAvailableStationsForYear(currentYear);
+        if (!validStations.length) validStations = allStations.slice();
+        if (!validStations.includes(String(currentStation))) {
+          currentStation = validStations[0] ?? null;
+        }
+
+        validYears = getAvailableYearsForStation(currentStation);
+        if (!validYears.length) validYears = allYears.slice();
+        if (!validYears.includes(Number(currentYear))) {
+          currentYear = validYears[0] ?? null;
+        }
+
+        validStations = getAvailableStationsForYear(currentYear);
+        if (!validStations.length) validStations = allStations.slice();
+        if (!validStations.includes(String(currentStation))) {
+          currentStation = validStations[0] ?? null;
+        }
+      }
+
+      fillSelect(stationFilter, validStations, currentStation);
+      fillSelect(yearFilter, validYears, currentYear);
+
+      currentStation = stationFilter.value || null;
+      currentYear = yearFilter.value ? Number(yearFilter.value) : null;
+
+      isUpdatingFilters = false;
+    }
+
+    function getSeries(element, station, year) {
+      const selected = records.filter(
         r =>
           r.STATION === String(station) &&
           r.YEAR === Number(year) &&
-          r.MONTH === Number(month) &&
           r.ELEMENT === element
-      ) || null;
+      );
+
+      const avgByMonth = new Map();
+      selected.forEach(r => {
+        avgByMonth.set(Number(r.MONTH), Number.isFinite(r.AVG) ? r.AVG : null);
+      });
+
+      return {
+        x: MONTHS.map(monthLabel),
+        y: MONTHS.map(m => avgByMonth.get(m) ?? null)
+      };
     }
 
-    function plotElement(targetId, element, station, year, month) {
-      const rec = getSelectedRecord(element, station, year, month);
-      const value = rec ? rec.AVG : null;
-      const label = `${year}-${monthLabel(month)}`;
+    function plotElement(targetId, element, station, year) {
+      const series = getSeries(element, station, year);
 
       Plotly.newPlot(targetId, [{
-        type: "bar",
-        x: [label],
-        y: [value],
-        text: [value !== null ? value : "bez dat"],
-        textposition: "outside",
+        type: "scatter",
+        mode: "lines+markers",
+        x: series.x,
+        y: series.y,
+        line: { width: 3 },
+        marker: { size: 7 },
         hovertemplate:
-          "Stanice: " + station + "<br>" +
-          "Rok: " + year + "<br>" +
-          "Měsíc: " + monthLabel(month) + "<br>" +
-          "AVG: %{y}<extra></extra>"
+          "Měsíc: %{x}<br>" +
+          "AVG: %{y:.3f}<extra></extra>"
       }], {
-        title: `Stanice ${station}, rok ${year}, měsíc ${monthLabel(month)}`,
+        title: `Stanice ${station}, rok ${year}`,
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#fbfdff",
         margin: { t: 56, r: 24, b: 70, l: 72 },
         xaxis: {
-          title: "Období",
+          title: "Měsíc",
           automargin: true,
+          categoryorder: "array",
+          categoryarray: MONTHS.map(monthLabel),
           gridcolor: "#e6eef7",
           zeroline: false
         },
@@ -303,35 +386,44 @@
     }
 
     function renderCharts() {
-      const station = document.getElementById("stationFilter").value;
-      const year = document.getElementById("yearFilter").value;
-      const month = document.getElementById("monthFilter").value;
+      if (!currentStation || !currentYear) return;
 
-      plotElement("chartF", "F", station, year, month);
-      plotElement("chartSSV", "SSV", station, year, month);
+      plotElement("chartF", "F", currentStation, currentYear);
+      plotElement("chartSSV", "SSV", currentStation, currentYear);
 
       const selectedCount = records.filter(
-        r => r.STATION === String(station) && r.YEAR === Number(year) && r.MONTH === Number(month)
+        r => r.STATION === String(currentStation) && r.YEAR === Number(currentYear)
       ).length;
 
       setStatus(
-        `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Zobrazena je stanice ${station}, ` +
-        `rok ${year}, měsíc ${monthLabel(month)}. Řádků pro výběr: ${selectedCount.toLocaleString("cs-CZ")}.`
+        `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Zobrazena je stanice ${currentStation}, ` +
+        `rok ${currentYear}. Řádků pro výběr: ${selectedCount.toLocaleString("cs-CZ")}.`
       );
     }
 
     function initializeFilters() {
-      stations = uniqueSorted(records.map(r => r.STATION).filter(Boolean), (a, b) => a.localeCompare(b, "cs"));
-      years = uniqueSorted(records.map(r => r.YEAR).filter(Number.isFinite), (a, b) => a - b);
-      months = uniqueSorted(records.map(r => r.MONTH).filter(Number.isFinite), (a, b) => a - b);
+      allStations = uniqueSorted(records.map(r => r.STATION).filter(Boolean), (a, b) => a.localeCompare(b, "cs"));
+      allYears = uniqueSorted(records.map(r => r.YEAR).filter(Number.isFinite), (a, b) => a - b);
 
-      fillSelect("stationFilter", stations);
-      fillSelect("yearFilter", years);
-      fillSelect("monthFilter", months, monthLabel);
+      currentStation = allStations[0] ?? null;
+      currentYear = allYears[0] ?? null;
 
-      document.getElementById("stationFilter").addEventListener("change", renderCharts);
-      document.getElementById("yearFilter").addEventListener("change", renderCharts);
-      document.getElementById("monthFilter").addEventListener("change", renderCharts);
+      syncFilters();
+      renderCharts();
+
+      stationFilter.addEventListener("change", () => {
+        if (isUpdatingFilters) return;
+        currentStation = stationFilter.value || null;
+        syncFilters("station");
+        renderCharts();
+      });
+
+      yearFilter.addEventListener("change", () => {
+        if (isUpdatingFilters) return;
+        currentYear = yearFilter.value ? Number(yearFilter.value) : null;
+        syncFilters("year");
+        renderCharts();
+      });
     }
 
     async function exportChart(chartId, filenameBase) {
@@ -346,10 +438,17 @@
     }
 
     async function exportBothCharts() {
-      await exportChart("chartF", "graf_F");
+      await exportChart("chartF", `graf_F_${currentStation}_${currentYear}`);
       setTimeout(async () => {
-        await exportChart("chartSSV", "graf_SSV");
+        await exportChart("chartSSV", `graf_SSV_${currentStation}_${currentYear}`);
       }, 500);
+    }
+
+    function resetFilters() {
+      currentStation = allStations[0] ?? null;
+      currentYear = allYears[0] ?? null;
+      syncFilters();
+      renderCharts();
     }
 
     function loadCsv() {
@@ -374,7 +473,6 @@
           }
 
           initializeFilters();
-          renderCharts();
         },
         error: function(error) {
           setStatus(`Nepodařilo se načíst ${CSV_FILE}: ${error.message}`, true);
@@ -383,6 +481,7 @@
     }
 
     document.getElementById("exportAllBtn").addEventListener("click", exportBothCharts);
+    document.getElementById("resetBtn").addEventListener("click", resetFilters);
     loadCsv();
   </script>
 </body>
