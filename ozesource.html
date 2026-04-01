@@ -3,18 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OZE Source – průměrné hodnoty</title>
+  <title>OZE Source – měsíční hodnoty</title>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     :root{
       --chmi-blue:#0b5ea8;
       --chmi-blue-dark:#0a4a82;
-      --chmi-blue-light:#eaf3fb;
       --chmi-border:#c7d9eb;
       --chmi-text:#17324d;
       --card-bg:#ffffff;
-      --page-bg:#f4f8fb;
     }
     *{ box-sizing:border-box; }
     body{
@@ -104,9 +102,6 @@
       color:var(--chmi-blue-dark);
       border-color:var(--chmi-border);
     }
-    button:hover{
-      filter:brightness(0.97);
-    }
     .charts{
       display:grid;
       grid-template-columns:1fr 1fr;
@@ -154,11 +149,11 @@
 <body>
   <div class="page">
     <section class="hero">
-      <h1>OZE Source – průměrné hodnoty</h1>
+      <h1>OZE Source – měsíční hodnoty</h1>
       <p>
         Dashboard načítá soubor <strong>ozesource.csv</strong> ze stejného adresáře. Pro vybranou
         <strong>stanici</strong>, <strong>rok</strong> a <strong>měsíc</strong> zobrazuje dva grafy
-        průměrných hodnot <strong>AVG</strong> v čase pro prvky <strong>F</strong> a <strong>SSV10M</strong>.
+        hodnot <strong>AVG</strong> pro prvky <strong>F</strong> a <strong>SSV</strong>.
       </p>
     </section>
 
@@ -195,12 +190,12 @@
 
       <article class="chart-card">
         <div class="chart-header">
-          <h2 class="chart-title">ELEMENT = SSV10M</h2>
+          <h2 class="chart-title">ELEMENT = SSV</h2>
           <div class="chart-toolbar">
-            <button class="secondary" type="button" onclick="exportChart('chartSSV10M','graf_SSV10M')">PNG</button>
+            <button class="secondary" type="button" onclick="exportChart('chartSSV','graf_SSV')">PNG</button>
           </div>
         </div>
-        <div id="chartSSV10M" class="chart"></div>
+        <div id="chartSSV" class="chart"></div>
       </article>
     </section>
 
@@ -218,7 +213,6 @@
     let stations = [];
     let years = [];
     let months = [];
-    let allTimes = [];
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
@@ -227,12 +221,6 @@
 
     function monthLabel(monthNumber) {
       return String(monthNumber).padStart(2, "0");
-    }
-
-    function timeToMinutes(t) {
-      if (!t || !String(t).includes(":")) return Number.MAX_SAFE_INTEGER;
-      const parts = String(t).split(":");
-      return Number(parts[0]) * 60 + Number(parts[1]);
     }
 
     function uniqueSorted(values, sortFn) {
@@ -255,61 +243,45 @@
         STATION: String(row.STATION ?? "").trim(),
         YEAR: Number(row.YEAR),
         MONTH: Number(row.MONTH),
-        TIME: String(row.TIME ?? "").trim(),
         ELEMENT: String(row.ELEMENT ?? "").trim(),
-        COUNT: Number(row.COUNT ?? 0),
         AVG: Number(row.AVG ?? NaN)
       };
     }
 
-    function buildSeries(element, station, year, month) {
-      const selected = records.filter(
+    function getSelectedRecord(element, station, year, month) {
+      return records.find(
         r =>
           r.STATION === String(station) &&
           r.YEAR === Number(year) &&
           r.MONTH === Number(month) &&
           r.ELEMENT === element
-      );
-
-      const avgByTime = new Map();
-      selected.forEach(r => {
-        avgByTime.set(r.TIME, Number.isFinite(r.AVG) ? r.AVG : null);
-      });
-
-      return {
-        x: allTimes,
-        y: allTimes.map(time => avgByTime.get(time) ?? null)
-      };
+      ) || null;
     }
 
     function plotElement(targetId, element, station, year, month) {
-      const series = buildSeries(element, station, year, month);
+      const rec = getSelectedRecord(element, station, year, month);
+      const value = rec ? rec.AVG : null;
+      const label = `${year}-${monthLabel(month)}`;
 
       Plotly.newPlot(targetId, [{
-        type: "scatter",
-        mode: "lines+markers",
-        x: series.x,
-        y: series.y,
-        line: {
-          width: 3
-        },
-        marker: {
-          size: 7
-        },
+        type: "bar",
+        x: [label],
+        y: [value],
+        text: [value !== null ? value : "bez dat"],
+        textposition: "outside",
         hovertemplate:
-          "Čas: %{x}<br>" +
-          "AVG: %{y:.3f}<extra></extra>"
+          "Stanice: " + station + "<br>" +
+          "Rok: " + year + "<br>" +
+          "Měsíc: " + monthLabel(month) + "<br>" +
+          "AVG: %{y}<extra></extra>"
       }], {
         title: `Stanice ${station}, rok ${year}, měsíc ${monthLabel(month)}`,
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#fbfdff",
-        margin: { t: 56, r: 24, b: 88, l: 72 },
+        margin: { t: 56, r: 24, b: 70, l: 72 },
         xaxis: {
-          title: "TIME",
-          tickangle: -45,
+          title: "Období",
           automargin: true,
-          categoryorder: "array",
-          categoryarray: allTimes,
           gridcolor: "#e6eef7",
           zeroline: false
         },
@@ -336,7 +308,7 @@
       const month = document.getElementById("monthFilter").value;
 
       plotElement("chartF", "F", station, year, month);
-      plotElement("chartSSV10M", "SSV10M", station, year, month);
+      plotElement("chartSSV", "SSV", station, year, month);
 
       const selectedCount = records.filter(
         r => r.STATION === String(station) && r.YEAR === Number(year) && r.MONTH === Number(month)
@@ -352,7 +324,6 @@
       stations = uniqueSorted(records.map(r => r.STATION).filter(Boolean), (a, b) => a.localeCompare(b, "cs"));
       years = uniqueSorted(records.map(r => r.YEAR).filter(Number.isFinite), (a, b) => a - b);
       months = uniqueSorted(records.map(r => r.MONTH).filter(Number.isFinite), (a, b) => a - b);
-      allTimes = uniqueSorted(records.map(r => r.TIME).filter(Boolean), (a, b) => timeToMinutes(a) - timeToMinutes(b));
 
       fillSelect("stationFilter", stations);
       fillSelect("yearFilter", years);
@@ -368,8 +339,8 @@
       await Plotly.downloadImage(chart, {
         format: "png",
         filename: filenameBase,
-        width: 1400,
-        height: 900,
+        width: 1200,
+        height: 800,
         scale: 2
       });
     }
@@ -377,7 +348,7 @@
     async function exportBothCharts() {
       await exportChart("chartF", "graf_F");
       setTimeout(async () => {
-        await exportChart("chartSSV10M", "graf_SSV10M");
+        await exportChart("chartSSV", "graf_SSV");
       }, 500);
     }
 
@@ -393,9 +364,7 @@
               r.STATION &&
               Number.isFinite(r.YEAR) &&
               Number.isFinite(r.MONTH) &&
-              r.TIME &&
               r.ELEMENT &&
-              Number.isFinite(r.COUNT) &&
               Number.isFinite(r.AVG)
             );
 
