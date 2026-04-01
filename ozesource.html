@@ -146,7 +146,7 @@
     <section class="hero">
       <h1>OZE Source – měsíční hodnoty</h1>
       <p>
-        Dashboard načítá soubor <strong>ozesource.csv</strong> ze stejného adresáře. Pro vybranou
+        Dashboard načítá soubor <strong>ozesource.csv</strong> ze stejného adresáře. Pro vybraný
         <strong>název stanice</strong> a <strong>rok</strong> zobrazuje měsíční hodnoty <strong>AVG</strong>
         pro prvky <strong>F</strong> a <strong>SSV</strong>.
       </p>
@@ -195,7 +195,8 @@
 
     <div class="footer-note">
       Filtry Název stanice a Rok jsou navzájem provázané. Po výběru názvu stanice se v nabídce Rok zobrazí jen roky,
-      kde má vybraná stanice data. Po výběru roku se v nabídce Název stanice zobrazí jen stanice, které mají data v daném roce.
+      kde má vybraná stanice data pro F i SSV. Po výběru roku se v nabídce Název stanice zobrazí jen stanice,
+      které mají v daném roce data pro F i SSV.
     </div>
   </div>
 
@@ -332,12 +333,8 @@
         validYears = allYears.slice();
       }
 
-      if (!currentName) {
-        validNames = allNames.slice();
-      }
-      if (!currentYear) {
-        validYears = allYears.slice();
-      }
+      if (!currentName) validNames = allNames.slice();
+      if (!currentYear) validYears = allYears.slice();
 
       fillSelect(stationFilter, validNames, currentName, v => v, "Žádná stanice");
       fillSelect(yearFilter, validYears, currentYear, v => v, "Žádný rok");
@@ -353,10 +350,7 @@
       }
 
       const selected = records.filter(
-        r =>
-          r.NAME === String(name) &&
-          r.YEAR === Number(year) &&
-          r.ELEMENT === element
+        r => r.NAME === String(name) && r.YEAR === Number(year) && r.ELEMENT === element
       );
 
       const avgByMonth = new Map();
@@ -380,7 +374,7 @@
       const stationCode = getStationCodeForName(name);
 
       const title = (!name || !year)
-        ? `Vyber název stanice a rok`
+        ? "Vyber název stanice a rok"
         : (stationCode ? `${name} (${stationCode}), rok ${year}` : `${name}, rok ${year}`);
 
       Plotly.newPlot(targetId, [{
@@ -390,9 +384,7 @@
         y: series.y,
         line: { width: 3 },
         marker: { size: 7 },
-        hovertemplate:
-          "Měsíc: %{x}<br>" +
-          "AVG: %{y:.3f}<extra></extra>"
+        hovertemplate: "Měsíc: %{x}<br>AVG: %{y:.3f}<extra></extra>"
       }], {
         title: title,
         paper_bgcolor: "#ffffff",
@@ -428,16 +420,12 @@
       plotElement("chartSSV", "SSV", currentName, currentYear);
 
       if (!currentName && !currentYear) {
-        setStatus(
-          `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Vyber název stanice a rok.`
-        );
+        setStatus(`Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Vyber název stanice a rok.`);
         return;
       }
 
       if (!currentName || !currentYear) {
-        setStatus(
-          `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Pro zobrazení grafů vyber oba filtry: název stanice i rok.`
-        );
+        setStatus(`Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Pro zobrazení grafů vyber oba filtry: název stanice i rok.`);
         return;
       }
 
@@ -446,24 +434,12 @@
       ).length;
 
       setStatus(
-        `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Zobrazena je stanice ${currentName}, ` +
-        `rok ${currentYear}. Řádků pro výběr: ${selectedCount.toLocaleString("cs-CZ")}.`
+        `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Zobrazena je stanice ${currentName}, rok ${currentYear}. Řádků pro výběr: ${selectedCount.toLocaleString("cs-CZ")}.`
       );
     }
 
     function initializeFilters() {
-      const validNameYearPairs = uniqueSorted(
-        records
-          .map(r => `${r.NAME}|||${r.YEAR}`)
-          .filter(key => {
-            const [name, year] = key.split("|||");
-            return name && Number.isFinite(Number(year)) && hasBothElementsForNameYear(name, Number(year));
-          }),
-        (a, b) => a.localeCompare(b, "cs")
-      );
-
-      const validRecords = records.filter(r => hasBothElementsForNameYear(r.NAME, r.YEAR));
-      records = validRecords;
+      records = records.filter(r => hasBothElementsForNameYear(r.NAME, r.YEAR));
 
       allNames = uniqueSorted(
         records.map(r => r.NAME).filter(Boolean),
@@ -522,34 +498,43 @@
       renderCharts();
     }
 
-    function loadCsv() {
-      Papa.parse(CSV_FILE, {
-        download: true,
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-          records = (results.data || [])
-            .map(normalizeRow)
-            .filter(r =>
-              r.STATION &&
-              r.NAME &&
-              Number.isFinite(r.YEAR) &&
-              Number.isFinite(r.MONTH) &&
-              r.ELEMENT &&
-              Number.isFinite(r.AVG)
-            );
-
-          if (!records.length) {
-            setStatus("Soubor ozesource.csv byl načten, ale neobsahuje použitelná data.", true);
-            return;
-          }
-
-          initializeFilters();
-        },
-        error: function(error) {
-          setStatus(`Nepodařilo se načíst ${CSV_FILE}: ${error.message}`, true);
+    async function loadCsv() {
+      try {
+        const response = await fetch(CSV_FILE, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
-      });
+        const csvText = await response.text();
+
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: function(results) {
+            records = (results.data || [])
+              .map(normalizeRow)
+              .filter(r =>
+                r.STATION &&
+                r.NAME &&
+                Number.isFinite(r.YEAR) &&
+                Number.isFinite(r.MONTH) &&
+                r.ELEMENT &&
+                Number.isFinite(r.AVG)
+              );
+
+            if (!records.length) {
+              setStatus("Soubor ozesource.csv byl načten, ale neobsahuje použitelná data.", true);
+              return;
+            }
+
+            initializeFilters();
+          },
+          error: function(error) {
+            setStatus(`Nepodařilo se zpracovat ${CSV_FILE}: ${error.message}`, true);
+          }
+        });
+      } catch (error) {
+        setStatus(`Nepodařilo se načíst ${CSV_FILE}: ${error.message}`, true);
+      }
     }
 
     document.getElementById("exportAllBtn").addEventListener("click", exportBothCharts);
