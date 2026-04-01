@@ -21,124 +21,52 @@
       background: linear-gradient(180deg, #eef5fb 0%, #f8fbfe 100%);
       color:var(--chmi-text);
     }
-    .page{
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 24px;
-    }
+    .page{ max-width:1400px; margin:0 auto; padding:24px; }
     .hero{
       background: linear-gradient(135deg, var(--chmi-blue) 0%, var(--chmi-blue-dark) 100%);
-      color:#fff;
-      border-radius:18px;
-      padding:24px 28px;
-      box-shadow: 0 10px 24px rgba(11,94,168,.18);
-      margin-bottom:20px;
+      color:#fff; border-radius:18px; padding:24px 28px;
+      box-shadow: 0 10px 24px rgba(11,94,168,.18); margin-bottom:20px;
     }
     .hero h1{ margin:0 0 8px 0; font-size:30px; }
-    .hero p{
-      margin:0;
-      font-size:15px;
-      line-height:1.5;
-      max-width:980px;
-      color:rgba(255,255,255,.92);
-    }
+    .hero p{ margin:0; font-size:15px; line-height:1.5; max-width:980px; color:rgba(255,255,255,.92); }
     .status{
-      margin: 0 0 16px 0;
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: #fff;
-      border:1px solid var(--chmi-border);
-      color:#36506a;
-      box-shadow: 0 3px 10px rgba(0,0,0,.03);
+      margin:0 0 16px 0; padding:12px 14px; border-radius:12px; background:#fff;
+      border:1px solid var(--chmi-border); color:#36506a; box-shadow:0 3px 10px rgba(0,0,0,.03);
     }
-    .status.error{
-      background:#fff3f3;
-      color:#8a1f1f;
-      border-color:#efc3c3;
-    }
+    .status.error{ background:#fff3f3; color:#8a1f1f; border-color:#efc3c3; }
     .controls{
-      background: var(--card-bg);
-      border:1px solid var(--chmi-border);
-      border-radius:16px;
-      padding:18px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:16px;
-      align-items:flex-end;
-      margin-bottom:20px;
-      box-shadow: 0 4px 14px rgba(11,94,168,.05);
+      background:var(--card-bg); border:1px solid var(--chmi-border); border-radius:16px; padding:18px;
+      display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; margin-bottom:20px;
+      box-shadow:0 4px 14px rgba(11,94,168,.05);
     }
     .filter-block label{
-      display:block;
-      font-size:13px;
-      font-weight:700;
-      margin-bottom:6px;
-      color:var(--chmi-blue-dark);
-      text-transform:uppercase;
-      letter-spacing:.03em;
+      display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:var(--chmi-blue-dark);
+      text-transform:uppercase; letter-spacing:.03em;
     }
     select, button{
-      min-width:160px;
-      padding:10px 12px;
-      font-size:14px;
-      border-radius:10px;
-      border:1px solid var(--chmi-border);
-      background:#fff;
-      color:var(--chmi-text);
+      min-width:180px; padding:10px 12px; font-size:14px; border-radius:10px;
+      border:1px solid var(--chmi-border); background:#fff; color:var(--chmi-text);
     }
     button{
-      cursor:pointer;
-      background:var(--chmi-blue);
-      color:#fff;
-      border-color:var(--chmi-blue);
-      font-weight:700;
-      min-width:auto;
+      cursor:pointer; background:var(--chmi-blue); color:#fff; border-color:var(--chmi-blue);
+      font-weight:700; min-width:auto;
     }
-    button.secondary{
-      background:#fff;
-      color:var(--chmi-blue-dark);
-      border-color:var(--chmi-border);
-    }
-    .charts{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:20px;
-    }
+    button.secondary{ background:#fff; color:var(--chmi-blue-dark); border-color:var(--chmi-border); }
+    .charts{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
     .chart-card{
-      background:var(--card-bg);
-      border:1px solid var(--chmi-border);
-      border-radius:16px;
-      overflow:hidden;
-      box-shadow: 0 6px 18px rgba(11,94,168,.05);
+      background:var(--card-bg); border:1px solid var(--chmi-border); border-radius:16px; overflow:hidden;
+      box-shadow:0 6px 18px rgba(11,94,168,.05);
     }
     .chart-header{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      padding:14px 16px 10px 16px;
-      border-bottom:1px solid #eef4fa;
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      padding:14px 16px 10px 16px; border-bottom:1px solid #eef4fa;
       background:linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
     }
-    .chart-title{
-      margin:0;
-      font-size:18px;
-      color:var(--chmi-blue-dark);
-    }
-    .chart-toolbar{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
+    .chart-title{ margin:0; font-size:18px; color:var(--chmi-blue-dark); }
+    .chart-toolbar{ display:flex; gap:8px; flex-wrap:wrap; }
     .chart{ min-height:460px; }
-    .footer-note{
-      margin-top:16px;
-      font-size:13px;
-      color:#5c7389;
-    }
-    @media (max-width: 1100px){
-      .charts{ grid-template-columns:1fr; }
-    }
+    .footer-note{ margin-top:16px; font-size:13px; color:#5c7389; }
+    @media (max-width:1100px){ .charts{ grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -202,11 +130,11 @@
 
   <script>
     const CSV_FILE = "ozesource.csv";
+    const MONTHS = ["01","02","03","04","05","06","07","08","09","10","11","12"];
+
     const statusEl = document.getElementById("status");
     const stationFilter = document.getElementById("stationFilter");
     const yearFilter = document.getElementById("yearFilter");
-
-    const MONTHS = Array.from({length: 12}, (_, i) => i + 1);
 
     let records = [];
     let allNames = [];
@@ -215,58 +143,55 @@
     let currentYear = "";
     let isUpdatingFilters = false;
 
-    function setStatus(message, isError = false) {
+    function setStatus(message, isError) {
       statusEl.textContent = message;
       statusEl.className = isError ? "status error" : "status";
     }
 
-    function monthLabel(monthNumber) {
-      return String(monthNumber).padStart(2, "0");
+    function safeNumber(value) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : NaN;
     }
 
     function uniqueSorted(values, sortFn) {
-      return [...new Set(values)].sort(sortFn);
+      const arr = Array.from(new Set(values));
+      arr.sort(sortFn);
+      return arr;
     }
 
-    function fillSelect(selectEl, values, selectedValue = "", formatter = v => v, emptyLabel = "") {
+    function fillSelect(selectEl, values, selectedValue, formatter, emptyLabel) {
       selectEl.innerHTML = "";
-
       const emptyOpt = document.createElement("option");
       emptyOpt.value = "";
-      emptyOpt.textContent = emptyLabel;
-      if (selectedValue === "" || selectedValue === null || typeof selectedValue === "undefined") {
-        emptyOpt.selected = true;
-      }
+      emptyOpt.textContent = emptyLabel || "";
+      if (!selectedValue) emptyOpt.selected = true;
       selectEl.appendChild(emptyOpt);
 
-      values.forEach(v => {
+      values.forEach(function(v) {
         const opt = document.createElement("option");
-        opt.value = v;
-        opt.textContent = formatter(v);
-        if (String(v) === String(selectedValue)) {
-          opt.selected = true;
-        }
+        opt.value = String(v);
+        opt.textContent = formatter ? formatter(v) : String(v);
+        if (String(v) === String(selectedValue)) opt.selected = true;
         selectEl.appendChild(opt);
       });
     }
 
     function normalizeRow(row) {
       return {
-        STATION: String(row.STATION ?? "").trim(),
-        NAME: String(row.NAME ?? "").trim(),
-        YEAR: Number(row.YEAR),
-        MONTH: Number(row.MONTH),
-        ELEMENT: String(row.ELEMENT ?? "").trim(),
-        AVG: Number(row.AVG ?? NaN)
+        STATION: String(row.STATION || "").trim(),
+        NAME: String(row.NAME || "").trim(),
+        YEAR: safeNumber(row.YEAR),
+        MONTH: safeNumber(row.MONTH),
+        ELEMENT: String(row.ELEMENT || "").trim(),
+        AVG: safeNumber(row.AVG)
       };
     }
 
     function hasBothElementsForNameYear(name, year) {
-      const elems = new Set(
-        records
-          .filter(r => r.NAME === String(name) && r.YEAR === Number(year))
-          .map(r => r.ELEMENT)
-      );
+      const elems = new Set();
+      records.forEach(function(r) {
+        if (r.NAME === String(name) && r.YEAR === Number(year)) elems.add(r.ELEMENT);
+      });
       return elems.has("F") && elems.has("SSV");
     }
 
@@ -276,8 +201,7 @@
         records
           .filter(r => r.NAME === String(name))
           .map(r => r.YEAR)
-          .filter(Number.isFinite)
-          .filter(year => hasBothElementsForNameYear(name, year)),
+          .filter(y => Number.isFinite(y) && hasBothElementsForNameYear(name, y)),
         (a, b) => a - b
       );
     }
@@ -288,13 +212,17 @@
         records
           .filter(r => r.YEAR === Number(year))
           .map(r => r.NAME)
-          .filter(Boolean)
-          .filter(name => hasBothElementsForNameYear(name, year)),
+          .filter(n => n && hasBothElementsForNameYear(n, year)),
         (a, b) => a.localeCompare(b, "cs")
       );
     }
 
-    function syncFilters(changedBy = null) {
+    function getStationCodeForName(name) {
+      const row = records.find(r => r.NAME === String(name));
+      return row ? row.STATION : "";
+    }
+
+    function syncFilters(changedBy) {
       isUpdatingFilters = true;
 
       let validNames = [];
@@ -302,29 +230,21 @@
 
       if (changedBy === "name") {
         validYears = getAvailableYearsForName(currentName);
-        if (!validYears.includes(Number(currentYear))) {
-          currentYear = "";
-        }
+        if (validYears.indexOf(Number(currentYear)) === -1) currentYear = "";
 
         if (currentYear) {
           validNames = getAvailableNamesForYear(currentYear);
-          if (!validNames.includes(String(currentName))) {
-            currentName = "";
-          }
+          if (validNames.indexOf(String(currentName)) === -1) currentName = "";
         } else {
           validNames = allNames.slice();
         }
       } else if (changedBy === "year") {
         validNames = getAvailableNamesForYear(currentYear);
-        if (!validNames.includes(String(currentName))) {
-          currentName = "";
-        }
+        if (validNames.indexOf(String(currentName)) === -1) currentName = "";
 
         if (currentName) {
           validYears = getAvailableYearsForName(currentName);
-          if (!validYears.includes(Number(currentYear))) {
-            currentYear = "";
-          }
+          if (validYears.indexOf(Number(currentYear)) === -1) currentYear = "";
         } else {
           validYears = allYears.slice();
         }
@@ -345,37 +265,25 @@
     }
 
     function getSeries(element, name, year) {
-      if (!name || !year) {
-        return { x: MONTHS.map(monthLabel), y: MONTHS.map(() => null) };
+      const y = [];
+      for (let i = 1; i <= 12; i += 1) {
+        const row = records.find(r =>
+          r.NAME === String(name) &&
+          r.YEAR === Number(year) &&
+          r.ELEMENT === element &&
+          r.MONTH === i
+        );
+        y.push(row ? row.AVG : null);
       }
-
-      const selected = records.filter(
-        r => r.NAME === String(name) && r.YEAR === Number(year) && r.ELEMENT === element
-      );
-
-      const avgByMonth = new Map();
-      selected.forEach(r => {
-        avgByMonth.set(Number(r.MONTH), Number.isFinite(r.AVG) ? r.AVG : null);
-      });
-
-      return {
-        x: MONTHS.map(monthLabel),
-        y: MONTHS.map(m => avgByMonth.get(m) ?? null)
-      };
-    }
-
-    function getStationCodeForName(name) {
-      const row = records.find(r => r.NAME === String(name));
-      return row ? row.STATION : "";
+      return { x: MONTHS, y: y };
     }
 
     function plotElement(targetId, element, name, year) {
       const series = getSeries(element, name, year);
       const stationCode = getStationCodeForName(name);
-
       const title = (!name || !year)
         ? "Vyber název stanice a rok"
-        : (stationCode ? `${name} (${stationCode}), rok ${year}` : `${name}, rok ${year}`);
+        : (stationCode ? name + " (" + stationCode + "), rok " + year : name + ", rok " + year);
 
       Plotly.newPlot(targetId, [{
         type: "scatter",
@@ -394,7 +302,7 @@
           title: "Měsíc",
           automargin: true,
           categoryorder: "array",
-          categoryarray: MONTHS.map(monthLabel),
+          categoryarray: MONTHS,
           gridcolor: "#e6eef7",
           zeroline: false
         },
@@ -420,35 +328,27 @@
       plotElement("chartSSV", "SSV", currentName, currentYear);
 
       if (!currentName && !currentYear) {
-        setStatus(`Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Vyber název stanice a rok.`);
+        setStatus("Načteno " + records.length.toLocaleString("cs-CZ") + " řádků. Vyber název stanice a rok.", false);
         return;
       }
-
       if (!currentName || !currentYear) {
-        setStatus(`Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Pro zobrazení grafů vyber oba filtry: název stanice i rok.`);
+        setStatus("Načteno " + records.length.toLocaleString("cs-CZ") + " řádků. Pro zobrazení grafů vyber oba filtry: název stanice i rok.", false);
         return;
       }
 
-      const selectedCount = records.filter(
-        r => r.NAME === String(currentName) && r.YEAR === Number(currentYear)
-      ).length;
-
+      const selectedCount = records.filter(r => r.NAME === String(currentName) && r.YEAR === Number(currentYear)).length;
       setStatus(
-        `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Zobrazena je stanice ${currentName}, rok ${currentYear}. Řádků pro výběr: ${selectedCount.toLocaleString("cs-CZ")}.`
+        "Načteno " + records.length.toLocaleString("cs-CZ") + " řádků. Zobrazena je stanice " +
+        currentName + ", rok " + currentYear + ". Řádků pro výběr: " + selectedCount.toLocaleString("cs-CZ") + ".",
+        false
       );
     }
 
     function initializeFilters() {
       records = records.filter(r => hasBothElementsForNameYear(r.NAME, r.YEAR));
 
-      allNames = uniqueSorted(
-        records.map(r => r.NAME).filter(Boolean),
-        (a, b) => a.localeCompare(b, "cs")
-      );
-      allYears = uniqueSorted(
-        records.map(r => r.YEAR).filter(Number.isFinite),
-        (a, b) => a - b
-      );
+      allNames = uniqueSorted(records.map(r => r.NAME).filter(Boolean), (a, b) => a.localeCompare(b, "cs"));
+      allYears = uniqueSorted(records.map(r => r.YEAR).filter(Number.isFinite), (a, b) => a - b);
 
       currentName = "";
       currentYear = "";
@@ -456,14 +356,14 @@
       syncFilters();
       renderCharts();
 
-      stationFilter.addEventListener("change", () => {
+      stationFilter.addEventListener("change", function() {
         if (isUpdatingFilters) return;
         currentName = stationFilter.value || "";
         syncFilters("name");
         renderCharts();
       });
 
-      yearFilter.addEventListener("change", () => {
+      yearFilter.addEventListener("change", function() {
         if (isUpdatingFilters) return;
         currentYear = yearFilter.value ? Number(yearFilter.value) : "";
         syncFilters("year");
@@ -485,9 +385,9 @@
     async function exportBothCharts() {
       const safeName = (currentName || "bez_stanice").replace(/[^a-zA-Z0-9_-]+/g, "_");
       const safeYear = currentYear || "bez_roku";
-      await exportChart("chartF", `graf_F_${safeName}_${safeYear}`);
-      setTimeout(async () => {
-        await exportChart("chartSSV", `graf_SSV_${safeName}_${safeYear}`);
+      await exportChart("chartF", "graf_F_" + safeName + "_" + safeYear);
+      setTimeout(async function() {
+        await exportChart("chartSSV", "graf_SSV_" + safeName + "_" + safeYear);
       }, 500);
     }
 
@@ -498,43 +398,49 @@
       renderCharts();
     }
 
-    async function loadCsv() {
-      try {
-        const response = await fetch(CSV_FILE, { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const csvText = await response.text();
+    window.addEventListener("error", function(e) {
+      setStatus("Chyba JavaScriptu: " + e.message, true);
+    });
 
-        Papa.parse(csvText, {
-          header: true,
-          skipEmptyLines: true,
-          complete: function(results) {
-            records = (results.data || [])
-              .map(normalizeRow)
-              .filter(r =>
-                r.STATION &&
-                r.NAME &&
-                Number.isFinite(r.YEAR) &&
-                Number.isFinite(r.MONTH) &&
-                r.ELEMENT &&
-                Number.isFinite(r.AVG)
-              );
+    function loadCsv() {
+      setStatus("Načítám ozesource.csv…", false);
 
-            if (!records.length) {
-              setStatus("Soubor ozesource.csv byl načten, ale neobsahuje použitelná data.", true);
-              return;
+      fetch(CSV_FILE + "?v=" + Date.now(), { cache: "no-store" })
+        .then(function(response) {
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          return response.text();
+        })
+        .then(function(csvText) {
+          Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+              records = (results.data || [])
+                .map(normalizeRow)
+                .filter(r =>
+                  r.STATION &&
+                  r.NAME &&
+                  Number.isFinite(r.YEAR) &&
+                  Number.isFinite(r.MONTH) &&
+                  r.ELEMENT &&
+                  Number.isFinite(r.AVG)
+                );
+
+              if (!records.length) {
+                setStatus("Soubor ozesource.csv byl načten, ale neobsahuje použitelná data.", true);
+                return;
+              }
+
+              initializeFilters();
+            },
+            error: function(error) {
+              setStatus("Nepodařilo se zpracovat ozesource.csv: " + error.message, true);
             }
-
-            initializeFilters();
-          },
-          error: function(error) {
-            setStatus(`Nepodařilo se zpracovat ${CSV_FILE}: ${error.message}`, true);
-          }
+          });
+        })
+        .catch(function(error) {
+          setStatus("Nepodařilo se načíst ozesource.csv: " + error.message, true);
         });
-      } catch (error) {
-        setStatus(`Nepodařilo se načíst ${CSV_FILE}: ${error.message}`, true);
-      }
     }
 
     document.getElementById("exportAllBtn").addEventListener("click", exportBothCharts);
