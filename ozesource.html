@@ -147,7 +147,7 @@
       <h1>OZE Source – měsíční hodnoty</h1>
       <p>
         Dashboard načítá soubor <strong>ozesource.csv</strong> ze stejného adresáře. Pro vybranou
-        <strong>stanici</strong> a <strong>rok</strong> zobrazuje měsíční hodnoty <strong>AVG</strong>
+        <strong>název stanice</strong> a <strong>rok</strong> zobrazuje měsíční hodnoty <strong>AVG</strong>
         pro prvky <strong>F</strong> a <strong>SSV</strong>.
       </p>
     </section>
@@ -156,7 +156,7 @@
 
     <section class="controls">
       <div class="filter-block">
-        <label for="stationFilter">Stanice</label>
+        <label for="stationFilter">Název stanice</label>
         <select id="stationFilter"></select>
       </div>
       <div class="filter-block">
@@ -194,8 +194,8 @@
     </section>
 
     <div class="footer-note">
-      Filtry Stanice a Rok jsou navzájem provázané. Po výběru stanice se v nabídce Rok zobrazí jen roky,
-      kde má vybraná stanice data. Po výběru roku se v nabídce Stanice zobrazí jen stanice, které mají data v daném roce.
+      Filtry Název stanice a Rok jsou navzájem provázané. Po výběru názvu stanice se v nabídce Rok zobrazí jen roky,
+      kde má vybraná stanice data. Po výběru roku se v nabídce Název stanice zobrazí jen stanice, které mají data v daném roce.
     </div>
   </div>
 
@@ -208,9 +208,9 @@
     const MONTHS = Array.from({length: 12}, (_, i) => i + 1);
 
     let records = [];
-    let allStations = [];
+    let allNames = [];
     let allYears = [];
-    let currentStation = null;
+    let currentName = null;
     let currentYear = null;
     let isUpdatingFilters = false;
 
@@ -243,6 +243,7 @@
     function normalizeRow(row) {
       return {
         STATION: String(row.STATION ?? "").trim(),
+        NAME: String(row.NAME ?? "").trim(),
         YEAR: Number(row.YEAR),
         MONTH: Number(row.MONTH),
         ELEMENT: String(row.ELEMENT ?? "").trim(),
@@ -250,21 +251,21 @@
       };
     }
 
-    function getAvailableYearsForStation(station) {
+    function getAvailableYearsForName(name) {
       return uniqueSorted(
         records
-          .filter(r => !station || r.STATION === String(station))
+          .filter(r => !name || r.NAME === String(name))
           .map(r => r.YEAR)
           .filter(Number.isFinite),
         (a, b) => a - b
       );
     }
 
-    function getAvailableStationsForYear(year) {
+    function getAvailableNamesForYear(year) {
       return uniqueSorted(
         records
           .filter(r => !year || r.YEAR === Number(year))
-          .map(r => r.STATION)
+          .map(r => r.NAME)
           .filter(Boolean),
         (a, b) => a.localeCompare(b, "cs")
       );
@@ -273,60 +274,60 @@
     function syncFilters(changedBy = null) {
       isUpdatingFilters = true;
 
-      let validStations = allStations.slice();
+      let validNames = allNames.slice();
       let validYears = allYears.slice();
 
-      if (changedBy === "station" && currentStation) {
-        validYears = getAvailableYearsForStation(currentStation);
+      if (changedBy === "name" && currentName) {
+        validYears = getAvailableYearsForName(currentName);
         if (!validYears.includes(Number(currentYear))) {
           currentYear = validYears[0] ?? null;
         }
-        validStations = getAvailableStationsForYear(currentYear);
-        if (!validStations.includes(String(currentStation))) {
-          currentStation = validStations[0] ?? null;
+        validNames = getAvailableNamesForYear(currentYear);
+        if (!validNames.includes(String(currentName))) {
+          currentName = validNames[0] ?? null;
         }
       } else if (changedBy === "year" && currentYear) {
-        validStations = getAvailableStationsForYear(currentYear);
-        if (!validStations.includes(String(currentStation))) {
-          currentStation = validStations[0] ?? null;
+        validNames = getAvailableNamesForYear(currentYear);
+        if (!validNames.includes(String(currentName))) {
+          currentName = validNames[0] ?? null;
         }
-        validYears = getAvailableYearsForStation(currentStation);
+        validYears = getAvailableYearsForName(currentName);
         if (!validYears.includes(Number(currentYear))) {
           currentYear = validYears[0] ?? null;
         }
       } else {
-        validStations = getAvailableStationsForYear(currentYear);
-        if (!validStations.length) validStations = allStations.slice();
-        if (!validStations.includes(String(currentStation))) {
-          currentStation = validStations[0] ?? null;
+        validNames = getAvailableNamesForYear(currentYear);
+        if (!validNames.length) validNames = allNames.slice();
+        if (!validNames.includes(String(currentName))) {
+          currentName = validNames[0] ?? null;
         }
 
-        validYears = getAvailableYearsForStation(currentStation);
+        validYears = getAvailableYearsForName(currentName);
         if (!validYears.length) validYears = allYears.slice();
         if (!validYears.includes(Number(currentYear))) {
           currentYear = validYears[0] ?? null;
         }
 
-        validStations = getAvailableStationsForYear(currentYear);
-        if (!validStations.length) validStations = allStations.slice();
-        if (!validStations.includes(String(currentStation))) {
-          currentStation = validStations[0] ?? null;
+        validNames = getAvailableNamesForYear(currentYear);
+        if (!validNames.length) validNames = allNames.slice();
+        if (!validNames.includes(String(currentName))) {
+          currentName = validNames[0] ?? null;
         }
       }
 
-      fillSelect(stationFilter, validStations, currentStation);
+      fillSelect(stationFilter, validNames, currentName);
       fillSelect(yearFilter, validYears, currentYear);
 
-      currentStation = stationFilter.value || null;
+      currentName = stationFilter.value || null;
       currentYear = yearFilter.value ? Number(yearFilter.value) : null;
 
       isUpdatingFilters = false;
     }
 
-    function getSeries(element, station, year) {
+    function getSeries(element, name, year) {
       const selected = records.filter(
         r =>
-          r.STATION === String(station) &&
+          r.NAME === String(name) &&
           r.YEAR === Number(year) &&
           r.ELEMENT === element
       );
@@ -342,8 +343,14 @@
       };
     }
 
-    function plotElement(targetId, element, station, year) {
-      const series = getSeries(element, station, year);
+    function getStationCodeForName(name) {
+      const row = records.find(r => r.NAME === String(name));
+      return row ? row.STATION : "";
+    }
+
+    function plotElement(targetId, element, name, year) {
+      const series = getSeries(element, name, year);
+      const stationCode = getStationCodeForName(name);
 
       Plotly.newPlot(targetId, [{
         type: "scatter",
@@ -356,7 +363,7 @@
           "Měsíc: %{x}<br>" +
           "AVG: %{y:.3f}<extra></extra>"
       }], {
-        title: `Stanice ${station}, rok ${year}`,
+        title: stationCode ? `${name} (${stationCode}), rok ${year}` : `${name}, rok ${year}`,
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#fbfdff",
         margin: { t: 56, r: 24, b: 70, l: 72 },
@@ -386,26 +393,29 @@
     }
 
     function renderCharts() {
-      if (!currentStation || !currentYear) return;
+      if (!currentName || !currentYear) return;
 
-      plotElement("chartF", "F", currentStation, currentYear);
-      plotElement("chartSSV", "SSV", currentStation, currentYear);
+      plotElement("chartF", "F", currentName, currentYear);
+      plotElement("chartSSV", "SSV", currentName, currentYear);
 
       const selectedCount = records.filter(
-        r => r.STATION === String(currentStation) && r.YEAR === Number(currentYear)
+        r => r.NAME === String(currentName) && r.YEAR === Number(currentYear)
       ).length;
 
       setStatus(
-        `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Zobrazena je stanice ${currentStation}, ` +
+        `Načteno ${records.length.toLocaleString("cs-CZ")} řádků. Zobrazena je stanice ${currentName}, ` +
         `rok ${currentYear}. Řádků pro výběr: ${selectedCount.toLocaleString("cs-CZ")}.`
       );
     }
 
     function initializeFilters() {
-      allStations = uniqueSorted(records.map(r => r.STATION).filter(Boolean), (a, b) => a.localeCompare(b, "cs"));
+      allNames = uniqueSorted(
+        records.map(r => r.NAME).filter(Boolean),
+        (a, b) => a.localeCompare(b, "cs")
+      );
       allYears = uniqueSorted(records.map(r => r.YEAR).filter(Number.isFinite), (a, b) => a - b);
 
-      currentStation = allStations[0] ?? null;
+      currentName = allNames[0] ?? null;
       currentYear = allYears[0] ?? null;
 
       syncFilters();
@@ -413,8 +423,8 @@
 
       stationFilter.addEventListener("change", () => {
         if (isUpdatingFilters) return;
-        currentStation = stationFilter.value || null;
-        syncFilters("station");
+        currentName = stationFilter.value || null;
+        syncFilters("name");
         renderCharts();
       });
 
@@ -438,14 +448,15 @@
     }
 
     async function exportBothCharts() {
-      await exportChart("chartF", `graf_F_${currentStation}_${currentYear}`);
+      const safeName = (currentName || "stanice").replace(/[^a-zA-Z0-9_-]+/g, "_");
+      await exportChart("chartF", `graf_F_${safeName}_${currentYear}`);
       setTimeout(async () => {
-        await exportChart("chartSSV", `graf_SSV_${currentStation}_${currentYear}`);
+        await exportChart("chartSSV", `graf_SSV_${safeName}_${currentYear}`);
       }, 500);
     }
 
     function resetFilters() {
-      currentStation = allStations[0] ?? null;
+      currentName = allNames[0] ?? null;
       currentYear = allYears[0] ?? null;
       syncFilters();
       renderCharts();
@@ -461,6 +472,7 @@
             .map(normalizeRow)
             .filter(r =>
               r.STATION &&
+              r.NAME &&
               Number.isFinite(r.YEAR) &&
               Number.isFinite(r.MONTH) &&
               r.ELEMENT &&
