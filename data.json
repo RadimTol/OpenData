@@ -322,12 +322,12 @@
   {
     "date": "2026-03-31",
     "source": "now",
-    "n_files": 910
+    "n_files": 909
   },
   {
     "date": "2026-04-01",
     "source": "10min",
-    "n_files": 474
+    "n_files": 475
   },
   {
     "date": "2026-04-01",
@@ -337,7 +337,7 @@
   {
     "date": "2026-04-01",
     "source": "daily",
-    "n_files": 756
+    "n_files": 757
   },
   {
     "date": "2026-04-01",
@@ -347,7 +347,7 @@
   {
     "date": "2026-04-01",
     "source": "phenomena",
-    "n_files": 34
+    "n_files": 65
   },
   {
     "date": "2026-04-02",
