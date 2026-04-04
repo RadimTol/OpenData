@@ -336,13 +336,8 @@
   },
   {
     "date": "2026-04-01",
-    "source": "now",
-    "n_files": 911
-  },
-  {
-    "date": "2026-04-01",
     "source": "phenomena",
-    "n_files": 86
+    "n_files": 89
   },
   {
     "date": "2026-04-02",
@@ -361,6 +356,21 @@
   },
   {
     "date": "2026-04-03",
+    "source": "10min",
+    "n_files": 471
+  },
+  {
+    "date": "2026-04-03",
+    "source": "1hour",
+    "n_files": 435
+  },
+  {
+    "date": "2026-04-03",
+    "source": "now",
+    "n_files": 909
+  },
+  {
+    "date": "2026-04-04",
     "source": "now",
     "n_files": 909
   }
