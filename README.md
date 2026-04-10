@@ -23,3 +23,4 @@ Aplikace obsahuje HTML soubory
 Pomocné soubory
 - chmu_logo.svg - logo ČHMÚ do index.html
 - last_run.txt a last_run_updat_date.txt - pomocnmé soubory pro kontrolu posledncíh běhů
+x
