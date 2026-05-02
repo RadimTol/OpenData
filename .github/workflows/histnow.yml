@@ -18,6 +18,9 @@ jobs:
   run-histnow:
     runs-on: ubuntu-latest
 
+    env:
+      PKG_SYSREQS: "false"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,10 +39,12 @@ jobs:
             libxml2-dev \
             libicu-dev
 
+      - name: Remove old pak lockfile
+        run: rm -f .github/pkg.lock
+
       - name: Install dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          install-system-dependencies: false
           packages: |
             jsonlite
             dplyr
