@@ -20,10 +20,6 @@ target_elements <- c("T", "SRA1H", "Fmax")
 output_file <- "histnow.csv"
 tz_local <- "Europe/Prague"
 
-# ------------------------------------------------------------
-# Pomocné funkce
-# ------------------------------------------------------------
-
 parse_chmi_json_values <- function(url) {
   x <- jsonlite::fromJSON(url, simplifyVector = FALSE)
 
@@ -41,6 +37,24 @@ parse_chmi_json_values <- function(url) {
   out <- tibble::as_tibble(do.call(rbind, vals), .name_repair = "minimal")
   names(out) <- col_names[seq_len(ncol(out))]
   out
+}
+
+parse_chmi_json_values_safe <- function(url) {
+  tryCatch(
+    parse_chmi_json_values(url),
+    error = function(e) {
+      warning(
+        "Přeskakuji nečitelný/nekompletní JSON: ",
+        basename(url),
+        " | URL: ",
+        url,
+        " | chyba: ",
+        conditionMessage(e),
+        call. = FALSE
+      )
+      tibble::tibble()
+    }
+  )
 }
 
 get_latest_file_by_pattern <- function(index_url, pattern) {
@@ -125,14 +139,21 @@ read_now_data <- function(file_urls, elements = target_elements) {
   purrr::map_dfr(file_urls, function(u) {
     message("Načítám: ", u)
 
-    df <- parse_chmi_json_values(u)
+    df <- parse_chmi_json_values_safe(u)
+
+    if (nrow(df) == 0) {
+      return(tibble::tibble())
+    }
 
     needed <- c("STATION", "ELEMENT", "DT", "VAL")
     missing_cols <- setdiff(needed, names(df))
     if (length(missing_cols) > 0) {
-      stop("V datovém souboru chybí očekávané sloupce: ",
-           paste(missing_cols, collapse = ", "),
-           " | soubor: ", u)
+      stop(
+        "V datovém souboru chybí očekávané sloupce: ",
+        paste(missing_cols, collapse = ", "),
+        " | soubor: ",
+        u
+      )
     }
 
     df |>
@@ -171,7 +192,7 @@ make_histogram_table <- function(df, run_time_local, bins = 10) {
     xmax <- max(x)
 
     if (xmin == xmax) {
-      out <- tibble(
+      return(tibble(
         run_datetime_local = format(run_time_local, "%Y-%m-%d %H:%M:%S %Z"),
         source = "NOW",
         element = el,
@@ -180,8 +201,7 @@ make_histogram_table <- function(df, run_time_local, bins = 10) {
         bin_left = rep(xmin, bins),
         bin_right = rep(xmax, bins),
         count = c(length(x), rep(0L, bins - 1))
-      )
-      return(out)
+      ))
     }
 
     breaks <- seq(xmin, xmax, length.out = bins + 1)
@@ -199,10 +219,6 @@ make_histogram_table <- function(df, run_time_local, bins = 10) {
     )
   })
 }
-
-# ------------------------------------------------------------
-# Hlavní běh
-# ------------------------------------------------------------
 
 run_time_local <- with_tz(Sys.time(), tz_local)
 today <- Sys.Date()
@@ -233,18 +249,6 @@ latest_vals <- get_latest_per_station_element(raw_data)
 if (nrow(latest_vals) == 0) {
   stop("Nepodařilo se vybrat nejaktuálnější hodnoty pro stanice a prvky.")
 }
-
-# ------------------------------------------------------------
-# Uložení vstupních dat pro histogram
-# ------------------------------------------------------------
-
-# readr::write_excel_csv(
-#  latest_vals,
-#  "datanow.csv",
-#  na = ""
-# )
-
-# message("Uložena vstupní data: datanow.csv")
 
 result <- make_histogram_table(latest_vals, run_time_local, bins = 10)
 
