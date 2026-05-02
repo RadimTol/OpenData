@@ -39,22 +39,60 @@ parse_chmi_json_values <- function(url) {
   out
 }
 
-parse_chmi_json_values_safe <- function(url) {
-  tryCatch(
-    parse_chmi_json_values(url),
-    error = function(e) {
-      warning(
-        "Přeskakuji nečitelný/nekompletní JSON: ",
-        basename(url),
-        " | URL: ",
-        url,
-        " | chyba: ",
-        conditionMessage(e),
-        call. = FALSE
-      )
-      tibble::tibble()
+parse_chmi_json_values_safe <- function(url, max_attempts = 4, wait_seconds = 10) {
+  last_error <- NULL
+
+  for (attempt in seq_len(max_attempts)) {
+    result <- tryCatch(
+      parse_chmi_json_values(url),
+      error = function(e) {
+        last_error <<- e
+        NULL
+      }
+    )
+
+    if (!is.null(result)) {
+      if (attempt > 1) {
+        message(
+          "JSON se podařilo načíst po opakování: ",
+          basename(url),
+          " | pokus ",
+          attempt,
+          "/",
+          max_attempts
+        )
+      }
+      return(result)
     }
+
+    if (attempt < max_attempts) {
+      message(
+        "JSON zatím nejde načíst, zkusím znovu: ",
+        basename(url),
+        " | pokus ",
+        attempt,
+        "/",
+        max_attempts,
+        " | chyba: ",
+        conditionMessage(last_error)
+      )
+      Sys.sleep(wait_seconds)
+    }
+  }
+
+  warning(
+    "Přeskakuji nečitelný/nekompletní JSON po opakovaných pokusech: ",
+    basename(url),
+    " | URL: ",
+    url,
+    " | počet pokusů: ",
+    max_attempts,
+    " | poslední chyba: ",
+    conditionMessage(last_error),
+    call. = FALSE
   )
+
+  tibble::tibble()
 }
 
 get_latest_file_by_pattern <- function(index_url, pattern) {
