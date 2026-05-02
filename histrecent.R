@@ -25,23 +25,71 @@ tz_local <- "Europe/Prague"
 # Pomocné funkce
 # ------------------------------------------------------------
 
-parse_chmi_json_values <- function(url) {
-  x <- jsonlite::fromJSON(url, simplifyVector = FALSE)
+parse_chmi_json_values <- function(url, max_attempts = 4, wait_seconds = 10) {
+  last_error <- NULL
 
-  vals <- x$data$data$values
-  hdr  <- x$data$data$header
+  for (attempt in seq_len(max_attempts)) {
+    result <- tryCatch({
+      x <- jsonlite::fromJSON(url, simplifyVector = FALSE)
 
-  if (is.null(vals) || is.null(hdr)) {
-    stop("V JSON nebyla nalezena očekávaná struktura data$data: ", url)
+      vals <- x$data$data$values
+      hdr  <- x$data$data$header
+
+      if (is.null(vals) || is.null(hdr)) {
+        stop("V JSON nebyla nalezena očekávaná struktura data$data: ", url)
+      }
+
+      col_names <- stringr::str_split(hdr, ",", simplify = TRUE) |>
+        as.character() |>
+        trimws()
+
+      out <- tibble::as_tibble(do.call(rbind, vals), .name_repair = "minimal")
+      names(out) <- col_names[seq_len(ncol(out))]
+      out
+    }, error = function(e) {
+      last_error <<- e
+      NULL
+    })
+
+    if (!is.null(result)) {
+      if (attempt > 1) {
+        message("JSON načten po opakování: ", basename(url), " (pokus ", attempt, "/", max_attempts, ")")
+      }
+      return(result)
+    }
+
+    if (attempt < max_attempts) {
+      message(
+        "JSON zatím nelze načíst: ", basename(url),
+        " | pokus ", attempt, "/", max_attempts,
+        " | čekám ", wait_seconds, " s | chyba: ", conditionMessage(last_error)
+      )
+      Sys.sleep(wait_seconds)
+    }
   }
 
-  col_names <- stringr::str_split(hdr, ",", simplify = TRUE) |>
-    as.character() |>
-    trimws()
+  stop(
+    "Nepodařilo se načíst JSON ani po ", max_attempts, " pokusech: ",
+    basename(url), " | URL: ", url,
+    " | poslední chyba: ", conditionMessage(last_error),
+    call. = FALSE
+  )
+}
 
-  out <- tibble::as_tibble(do.call(rbind, vals), .name_repair = "minimal")
-  names(out) <- col_names[seq_len(ncol(out))]
-  out
+parse_chmi_json_values_safe <- function(url, max_attempts = 4, wait_seconds = 10) {
+  tryCatch(
+    parse_chmi_json_values(url, max_attempts = max_attempts, wait_seconds = wait_seconds),
+    error = function(e) {
+      warning(
+        "Přeskakuji nečitelný/nekompletní JSON po opakovaných pokusech: ",
+        basename(url),
+        " | URL: ", url,
+        " | chyba: ", conditionMessage(e),
+        call. = FALSE
+      )
+      tibble::tibble()
+    }
+  )
 }
 
 get_root_json_files <- function(index_url) {
@@ -127,7 +175,7 @@ read_daily_data <- function(file_urls, elements = target_elements) {
   purrr::map_dfr(file_urls, function(u) {
     message("Načítám: ", u)
 
-    df <- parse_chmi_json_values(u)
+    df <- parse_chmi_json_values_safe(u)
 
     needed <- c("STATION", "ELEMENT", "VAL")
     missing_cols <- setdiff(needed, names(df))
