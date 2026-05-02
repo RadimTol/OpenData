@@ -5,7 +5,7 @@ on:
     - cron: "10 19 * * *"   # 00:00
     - cron: "10 1 * * *"    # 03:00
     - cron: "10 3-18/2 * * *"
-    
+
   workflow_dispatch:
 
 permissions:
@@ -28,9 +28,32 @@ jobs:
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
 
-      - name: Install R packages
+      - name: Install system libraries
         run: |
-          Rscript -e 'install.packages(c("jsonlite", "httr", "dplyr", "purrr", "stringr", "readr", "lubridate", "rvest", "xml2", "tibble"), repos = "https://cloud.r-project.org")'
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libxml2-dev \
+            libicu-dev
+
+      - name: Install R packages
+        shell: Rscript {0}
+        run: |
+          options(repos = c(CRAN = "https://cloud.r-project.org"))
+          pkgs <- c(
+            "jsonlite", "httr", "dplyr", "purrr", "stringr",
+            "readr", "lubridate", "rvest", "xml2", "tibble"
+          )
+          missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
+          if (length(missing) > 0) {
+            install.packages(missing, dependencies = TRUE)
+          }
+          still_missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
+          if (length(still_missing) > 0) {
+            stop("Nepodarilo se nainstalovat R balicky: ", paste(still_missing, collapse = ", "))
+          }
+          message("R balicky OK: ", paste(pkgs, collapse = ", "))
 
       - name: Run script
         run: Rscript MaxMinT.R
@@ -45,20 +68,20 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # hlavní výstup
+          # hlavni vystup
           git add MaxMinT.csv
 
-          # seznam zpracovaných souborů
+          # seznam zpracovanych souboru
           if [ -f listnow.csv ]; then
             git add listnow.csv
           fi
 
-          # případná debug data
+          # pripadna debug data
           if [ -f datanow.csv ]; then
             git add datanow.csv
           fi
 
-          # pokud není změna → OK konec
+          # pokud neni zmena, konec OK
           git diff --cached --quiet && exit 0
 
           git commit -m "Update MaxMinT outputs"
