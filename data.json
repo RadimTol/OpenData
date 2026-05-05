@@ -17,7 +17,7 @@
   {
     "date": "2026-05-01",
     "source": "phenomena",
-    "n_files": 63
+    "n_files": 77
   },
   {
     "date": "2026-05-02",
@@ -47,12 +47,12 @@
   {
     "date": "2026-05-04",
     "source": "10min",
-    "n_files": 474
+    "n_files": 475
   },
   {
     "date": "2026-05-04",
     "source": "1hour",
-    "n_files": 435
+    "n_files": 436
   },
   {
     "date": "2026-05-04",
