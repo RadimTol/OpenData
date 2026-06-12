@@ -30,6 +30,9 @@ for (f in files) {
 
   if (is.null(x)) next
 
+  # odstranění prázdného sloupce vzniklého koncovou čárkou v CSV
+  x <- x[, names(x) != "", drop = FALSE]
+
   names(x) <- trimws(names(x))
 
   if (!all(c("WSI", "YEAR", "CALM") %in% names(x))) {
@@ -39,29 +42,17 @@ for (f in files) {
   }
 
   x$YEAR <- as.integer(x$YEAR)
-  x$CALM <- as.numeric(gsub(",", ".", x$CALM))
+  x$CALM <- as.numeric(x$CALM)
 
-  x <- subset(x, YEAR >= 1991 & YEAR <= 2020)
+  x <- x[x$YEAR >= 1991 & x$YEAR <= 2020, ]
 
   if (nrow(x) == 0) next
 
-  station_mean <- aggregate(
-    CALM ~ WSI,
-    data = x,
-    FUN = function(z) mean(z, na.rm = TRUE)
+  station_result <- data.frame(
+    WSI = unique(x$WSI)[1],
+    CALM_MEAN = mean(x$CALM, na.rm = TRUE),
+    N_YEARS = sum(!is.na(x$CALM))
   )
-
-  names(station_mean)[2] <- "CALM_MEAN"
-
-  station_n <- aggregate(
-    CALM ~ WSI,
-    data = x,
-    FUN = function(z) sum(!is.na(z))
-  )
-
-  names(station_n)[2] <- "N_YEARS"
-
-  station_result <- merge(station_mean, station_n, by = "WSI")
 
   result <- rbind(result, station_result)
 }
@@ -70,20 +61,7 @@ if (nrow(result) == 0) {
   stop("Nebyla načtena žádná použitelná data pro období 1991–2020.")
 }
 
-out_mean <- aggregate(
-  CALM_MEAN ~ WSI,
-  data = result,
-  FUN = mean
-)
-
-out_n <- aggregate(
-  N_YEARS ~ WSI,
-  data = result,
-  FUN = max
-)
-
-out <- merge(out_mean, out_n, by = "WSI")
-out <- out[order(-out$CALM_MEAN), ]
+out <- result[order(-result$CALM_MEAN), ]
 
 write.csv(
   out,
