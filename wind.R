@@ -3,9 +3,11 @@ base_url <- "https://opendata.chmi.cz/meteorology/climate/historical_csv/data/ye
 # načtení seznamu souborů
 html <- readLines(base_url, warn = FALSE)
 
-files <- unique(sub('.*href="([^"]*WR08[^"]*\\.csv)".*',
-                    '\\1',
-                    grep("WR08.*\\.csv", html, value = TRUE)))
+files <- regmatches(html, gregexpr('yrs-[^"]*WR08\\.csv', html))
+files <- unique(unlist(files))
+
+cat("Počet nalezených WR08 souborů:", length(files), "\n")
+print(head(files))
 
 result <- data.frame()
 
