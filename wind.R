@@ -1,4 +1,4 @@
-base_url <- "https://opendata.chmi.cz/meteorology/climate/historical_csv/data/yearly/wind_roses/"
+base_url <- "https://opendata.chmi.cz/meteorology/climate/historical_csv/data/yearly/wind_rose/"
 
 # načtení seznamu souborů
 html <- readLines(base_url, warn = FALSE)
@@ -53,7 +53,7 @@ out <- out[order(-out$CALM_MEAN), ]
 
 write.csv(
   out,
-  "wind_roses_WR08_calm_1991_2020.csv",
+  "wind_s_WR08_calm_1991_2020.csv",
   row.names = FALSE
 )
 
