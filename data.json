@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-30",
-    "source": "now",
-    "n_files": 911
-  },
-  {
     "date": "2026-07-01",
     "source": "10min",
     "n_files": 475
@@ -12,7 +7,7 @@
   {
     "date": "2026-07-01",
     "source": "1hour",
-    "n_files": 434
+    "n_files": 436
   },
   {
     "date": "2026-07-01",
@@ -27,7 +22,7 @@
   {
     "date": "2026-07-01",
     "source": "phenomena",
-    "n_files": 91
+    "n_files": 126
   },
   {
     "date": "2026-07-02",
