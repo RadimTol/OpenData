@@ -1,11 +1,6 @@
 [
   {
     "date": "2026-06-01",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-01",
     "source": "1hour",
     "n_files": 436
   },
@@ -21,18 +16,8 @@
   },
   {
     "date": "2026-06-02",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-02",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-03",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-03",
@@ -41,18 +26,8 @@
   },
   {
     "date": "2026-06-04",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-04",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-05",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-05",
@@ -61,18 +36,8 @@
   },
   {
     "date": "2026-06-06",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-06",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-07",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-07",
@@ -81,18 +46,8 @@
   },
   {
     "date": "2026-06-08",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-08",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-09",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-09",
@@ -101,18 +56,8 @@
   },
   {
     "date": "2026-06-10",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-10",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-11",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-11",
@@ -121,18 +66,8 @@
   },
   {
     "date": "2026-06-12",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-12",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-13",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-13",
@@ -141,18 +76,8 @@
   },
   {
     "date": "2026-06-14",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-14",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-15",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-15",
@@ -161,18 +86,8 @@
   },
   {
     "date": "2026-06-16",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-16",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-17",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-17",
@@ -181,18 +96,8 @@
   },
   {
     "date": "2026-06-18",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-18",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-19",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-19",
@@ -201,18 +106,8 @@
   },
   {
     "date": "2026-06-20",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-20",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-21",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-21",
@@ -221,18 +116,8 @@
   },
   {
     "date": "2026-06-22",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-22",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-23",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-23",
@@ -241,18 +126,8 @@
   },
   {
     "date": "2026-06-24",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-24",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-25",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-25",
@@ -261,18 +136,8 @@
   },
   {
     "date": "2026-06-26",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-26",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-27",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-27",
@@ -281,28 +146,13 @@
   },
   {
     "date": "2026-06-28",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-28",
     "source": "1hour",
     "n_files": 436
   },
   {
     "date": "2026-06-29",
-    "source": "10min",
-    "n_files": 475
-  },
-  {
-    "date": "2026-06-29",
     "source": "1hour",
     "n_files": 436
-  },
-  {
-    "date": "2026-06-30",
-    "source": "10min",
-    "n_files": 475
   },
   {
     "date": "2026-06-30",
