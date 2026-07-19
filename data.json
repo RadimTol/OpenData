@@ -12,7 +12,7 @@
   {
     "date": "2026-07-01",
     "source": "daily",
-    "n_files": 757
+    "n_files": 758
   },
   {
     "date": "2026-07-01",
@@ -170,11 +170,6 @@
     "n_files": 436
   },
   {
-    "date": "2026-07-16",
-    "source": "now",
-    "n_files": 911
-  },
-  {
     "date": "2026-07-17",
     "source": "10min",
     "n_files": 475
@@ -191,6 +186,21 @@
   },
   {
     "date": "2026-07-18",
+    "source": "10min",
+    "n_files": 473
+  },
+  {
+    "date": "2026-07-18",
+    "source": "1hour",
+    "n_files": 436
+  },
+  {
+    "date": "2026-07-18",
+    "source": "now",
+    "n_files": 911
+  },
+  {
+    "date": "2026-07-19",
     "source": "now",
     "n_files": 911
   }
