@@ -262,7 +262,7 @@
   {
     "date": "2026-08-25",
     "source": "now",
-    "n_files": 911
+    "n_files": 474
   },
   {
     "date": "2026-08-26",
@@ -281,7 +281,22 @@
   },
   {
     "date": "2026-08-27",
+    "source": "10min",
+    "n_files": 429
+  },
+  {
+    "date": "2026-08-27",
+    "source": "1hour",
+    "n_files": 436
+  },
+  {
+    "date": "2026-08-27",
     "source": "now",
     "n_files": 911
+  },
+  {
+    "date": "2026-08-28",
+    "source": "now",
+    "n_files": 436
   }
 ]
