@@ -327,12 +327,12 @@
   {
     "date": "2026-09-01",
     "source": "10min",
-    "n_files": 473
+    "n_files": 474
   },
   {
     "date": "2026-09-01",
     "source": "1hour",
-    "n_files": 434
+    "n_files": 435
   },
   {
     "date": "2026-09-01",
@@ -347,7 +347,7 @@
   {
     "date": "2026-09-01",
     "source": "phenomena",
-    "n_files": 31
+    "n_files": 59
   },
   {
     "date": "2026-09-02",
