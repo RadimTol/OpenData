@@ -17,7 +17,7 @@
   {
     "date": "2026-09-01",
     "source": "phenomena",
-    "n_files": 154
+    "n_files": 155
   },
   {
     "date": "2026-09-02",
@@ -78,11 +78,6 @@
     "date": "2026-09-07",
     "source": "1hour",
     "n_files": 435
-  },
-  {
-    "date": "2026-09-07",
-    "source": "now",
-    "n_files": 909
   },
   {
     "date": "2026-09-08",
@@ -101,6 +96,21 @@
   },
   {
     "date": "2026-09-09",
+    "source": "10min",
+    "n_files": 473
+  },
+  {
+    "date": "2026-09-09",
+    "source": "1hour",
+    "n_files": 435
+  },
+  {
+    "date": "2026-09-09",
+    "source": "now",
+    "n_files": 909
+  },
+  {
+    "date": "2026-09-10",
     "source": "now",
     "n_files": 909
   }
