@@ -80,11 +80,6 @@
     "n_files": 436
   },
   {
-    "date": "2026-10-07",
-    "source": "now",
-    "n_files": 911
-  },
-  {
     "date": "2026-10-08",
     "source": "10min",
     "n_files": 475
@@ -101,6 +96,21 @@
   },
   {
     "date": "2026-10-09",
+    "source": "10min",
+    "n_files": 475
+  },
+  {
+    "date": "2026-10-09",
+    "source": "1hour",
+    "n_files": 436
+  },
+  {
+    "date": "2026-10-09",
+    "source": "now",
+    "n_files": 911
+  },
+  {
+    "date": "2026-10-10",
     "source": "now",
     "n_files": 911
   }
