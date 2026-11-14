@@ -122,7 +122,7 @@
   {
     "date": "2026-11-11",
     "source": "now",
-    "n_files": 910
+    "n_files": 473
   },
   {
     "date": "2026-11-12",
@@ -141,7 +141,22 @@
   },
   {
     "date": "2026-11-13",
+    "source": "10min",
+    "n_files": 330
+  },
+  {
+    "date": "2026-11-13",
+    "source": "1hour",
+    "n_files": 435
+  },
+  {
+    "date": "2026-11-13",
     "source": "now",
     "n_files": 910
+  },
+  {
+    "date": "2026-11-14",
+    "source": "now",
+    "n_files": 427
   }
 ]
